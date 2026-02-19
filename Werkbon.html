@@ -1,0 +1,2329 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Bezoekrapport">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#000000">
+<link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiQmV6b2VrcmFwcG9ydCIsInNob3J0X25hbWUiOiJCZXpvZWsiLCJzdGFydF91cmwiOiIuIiwiZGlzcGxheSI6InN0YW5kYWxvbmUiLCJiYWNrZ3JvdW5kX2NvbG9yIjoiIzBmMTExNyIsInRoZW1lX2NvbG9yIjoiIzAwMDAwMCJ9">
+<title>Bezoekrapport</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+  :root {
+    --bg:#0f1117; --surface:#181c27; --surface2:#1e2336;
+    --border:#2a2f45; --border-hover:#3d4460;
+    --accent:#4f8ef7; --accent2:#38d9a9; --accent3:#ff8c42;
+    --text:#e8ecf5; --text2:#8b92b0; --text3:#555e7d;
+    --success:#38d9a9; --solar:#f7c948; --battery:#4f8ef7; --air:#ff8c42;
+    --radius:12px; --radius-sm:8px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html{height:100%;-webkit-text-size-adjust:100%;}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;
+    padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);}
+
+  header{display:flex;align-items:center;justify-content:space-between;
+    padding:10px 20px;background:#000;border-bottom:1px solid var(--border);
+    position:sticky;top:0;z-index:100;}
+  .logo{display:flex;align-items:center;gap:12px;}
+  .logo img{height:32px;width:32px;object-fit:contain;}
+  .logo-text{display:flex;flex-direction:column;gap:1px;}
+  .logo-title{font-size:17px;font-weight:700;letter-spacing:-.3px;color:#fff;}
+  .logo-datetime{font-size:11px;font-weight:400;color:rgba(255,255,255,.7);letter-spacing:.2px;}
+  .hstep{font-size:12px;color:var(--text2);background:var(--surface2);
+    border:1px solid var(--border);padding:5px 12px;border-radius:20px;}
+
+  main{max-width:680px;margin:0 auto;padding:28px 16px 60px;}
+
+  .panel{display:none;animation:fadeUp .3s ease;}
+  .panel.active{display:block;}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  .ptitle{font-size:24px;font-weight:700;letter-spacing:-.5px;margin-bottom:6px;}
+  .psub{color:var(--text2);font-size:13px;margin-bottom:28px;line-height:1.5;}
+
+  /* Hub grid - all 6 types */
+  .tgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:28px;}
+  .tcard{background:var(--surface);border:2px solid var(--border);border-radius:var(--radius);
+    padding:22px 16px;cursor:pointer;transition:all .2s;text-align:center;position:relative;user-select:none;
+    opacity:0.35;}
+  .tcard:hover:not(.disabled){border-color:var(--border-hover);transform:translateY(-2px);}
+  .tcard.disabled{cursor:not-allowed;pointer-events:none;}
+  .tcard.clickable{cursor:pointer;pointer-events:auto;}
+  .tcard.completed{opacity:1;border-color:var(--success);background:rgba(56,217,169,.07);}
+  .tck{position:absolute;top:10px;right:10px;width:20px;height:20px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;font-size:11px;opacity:0;transition:opacity .2s;}
+  .tcard.completed .tck{opacity:1;background:var(--success);color:#0f2a22;}
+  .ticon{font-size:32px;margin-bottom:10px;}
+  .tname{font-size:14px;font-weight:600;}
+  .tsoon{font-size:10px;color:var(--text3);margin-top:3px;}
+
+  /* Score badges on hub cards */
+  .score-badges{display:flex;gap:8px;justify-content:center;margin-top:8px;}
+  .score-badge{font-size:11px;font-weight:600;display:flex;align-items:center;gap:3px;position:relative;}
+  .score-badge .score-val{color:var(--text3);}
+  .score-badge .score-val.red{color:#ff5c5c;}
+  .score-badge .score-val.green{color:var(--success);}
+  /* Custom instant tooltip */
+  .score-badge[data-tip]{position:relative;}
+  .score-badge[data-tip]::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);
+    background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:10px;font-weight:500;
+    padding:3px 8px;border-radius:4px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .05s;}
+  .score-badge[data-tip]:hover::after{opacity:1;}
+
+  .sel-tags{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:24px;min-height:20px;}
+  .stag{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;
+    border-radius:20px;font-size:12px;font-weight:500;}
+  .stag.solar{background:rgba(247,201,72,.15);color:var(--solar);border:1px solid rgba(247,201,72,.3);}
+  .stag.battery{background:rgba(79,142,247,.15);color:var(--battery);border:1px solid rgba(79,142,247,.3);}
+
+  .brow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .btn{padding:12px 24px;border:none;border-radius:var(--radius-sm);
+    font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;}
+  .btn-p{background:linear-gradient(135deg,var(--accent),#3a7de8);color:#fff;}
+  .btn-p:hover:not(:disabled){opacity:.88;transform:translateY(-1px);}
+  .btn-p:disabled{opacity:.35;cursor:not-allowed;}
+  .btn-s{background:var(--surface2);border:1px solid var(--border);color:var(--text);}
+  .btn-s:hover{border-color:var(--border-hover);}
+  .btn-g{background:linear-gradient(135deg,var(--success),#2ab990);color:#0f2a22;}
+
+  .rtabs{display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap;}
+  .rtab{padding:8px 16px;border-radius:20px;border:2px solid var(--border);
+    background:var(--surface2);color:var(--text2);font-size:13px;font-weight:600;
+    cursor:pointer;transition:all .2s;font-family:'DM Sans',sans-serif;}
+  .rtab.solar.active{background:rgba(247,201,72,.15);border-color:var(--solar);color:var(--solar);}
+  .rtab.battery.active{background:rgba(79,142,247,.15);border-color:var(--battery);color:var(--battery);}
+  .rtab.airmo.active,.rtab.airmu.active{background:rgba(255,140,66,.15);border-color:var(--air);color:var(--air);}
+  .rtab.charge.active{background:rgba(79,142,247,.15);border-color:#a78bfa;color:#a78bfa;}
+  .rtab.airwater.active{background:rgba(56,182,255,.15);border-color:#38b6ff;color:#38b6ff;}
+
+  .progwrap{margin-bottom:24px;}
+  .progmeta{display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:6px;}
+  .progtrack{height:5px;background:var(--border);border-radius:3px;overflow:hidden;}
+  .progfill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .4s ease;}
+  .prog-scores{display:flex;gap:12px;font-size:11px;margin-top:4px;}
+  .prog-scores span{display:flex;align-items:center;gap:3px;}
+
+  .shared-note{display:none;} /* Hidden */
+
+  .clist{display:flex;flex-direction:column;gap:10px;}
+  .ci{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:border-color .25s;}
+  .ci.completed{border-color:rgba(56,217,169,.35);}
+  .ci-head{display:flex;align-items:center;gap:10px;padding:14px 16px;cursor:pointer;user-select:none;}
+  .ci-head:hover{background:rgba(255,255,255,.02);}
+  .cnum{width:28px;height:28px;border-radius:50%;flex-shrink:0;background:var(--surface2);
+    border:1px solid var(--border);display:flex;align-items:center;justify-content:center;
+    font-size:11px;font-weight:700;font-family:'DM Mono',monospace;transition:all .25s;}
+  .ci.completed .cnum{background:var(--success);border-color:var(--success);color:#0f2a22;}
+  .clabel{flex:1;font-size:14px;font-weight:600;}
+  .sbadge{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
+    padding:2px 7px;border-radius:20px;background:rgba(56,217,169,.12);
+    color:var(--success);border:1px solid rgba(56,217,169,.25);flex-shrink:0;}
+  .sbadge.nok{background:rgba(255,255,255,.1);color:#fff;border-color:rgba(255,255,255,.3);}
+  .sbadge.ok{background:rgba(56,217,169,.12);color:var(--success);border-color:rgba(56,217,169,.25);}
+  .carrow{color:var(--text3);font-size:12px;transition:transform .25s;flex-shrink:0;}
+  .ci.open .carrow{transform:rotate(180deg);}
+  .ci-body{max-height:0;overflow:hidden;transition:max-height .35s ease;padding:0 16px;}
+  .ci.open .ci-body{max-height:900px;padding:0 16px 16px;}
+
+  .ci.deleted{opacity:0.25;pointer-events:none;}
+  .ci.deleted .ci-head{pointer-events:auto;cursor:default;}
+  .ci-actions{display:flex;gap:6px;flex-shrink:0;}
+  .ci-trash,.ci-restore{width:28px;height:28px;border-radius:50%;border:1px solid var(--border);
+    background:var(--surface2);display:flex;align-items:center;justify-content:center;
+    font-size:13px;cursor:pointer;transition:all .15s;flex-shrink:0;color:#fff;}
+  .ci-trash:hover{border-color:#ff5c5c;background:rgba(255,92,92,.12);}
+  .ci-restore{border-color:var(--success);background:rgba(56,217,169,.1);pointer-events:auto;color:#fff;}
+  .ci-restore:hover{background:rgba(56,217,169,.2);}
+  .ci-add{width:28px;height:28px;border-radius:50%;border:1px solid var(--border);
+    background:var(--surface2);display:flex;align-items:center;justify-content:center;
+    font-size:16px;font-weight:700;cursor:pointer;transition:all .15s;flex-shrink:0;color:#fff;}
+  .ci-add:hover{border-color:var(--border-hover);background:rgba(255,255,255,.08);}
+
+  /* Inline toast */
+  .toast-inline{display:none;background:#ff5c5c;color:#fff;font-size:13px;font-weight:600;
+    padding:8px 14px;border-radius:var(--radius-sm);margin-bottom:10px;text-align:center;}
+  .toast-inline.show{display:block;animation:fadeUp .2s ease;}
+
+  .thumbrow{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;}
+  .twrap{position:relative;width:80px;height:80px;border-radius:var(--radius-sm);
+    overflow:hidden;border:2px solid var(--border);cursor:pointer;transition:border-color .2s;}
+  .twrap:hover{border-color:var(--accent);}
+  .twrap img{width:100%;height:100%;object-fit:cover;display:block;}
+  .edit-badge{position:absolute;bottom:0;left:0;right:0;background:rgba(79,142,247,.85);
+    color:#fff;font-size:9px;font-weight:700;text-align:center;padding:3px 0;letter-spacing:.3px;}
+  .tdel{position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;
+    background:rgba(0,0,0,.8);border:none;color:#fff;font-size:11px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;z-index:2;}
+
+  .photoarea{border:2px dashed var(--border);border-radius:var(--radius-sm);
+    padding:22px 16px;text-align:center;cursor:pointer;transition:all .2s;
+    position:relative;margin-bottom:10px;}
+  .photoarea:hover{border-color:var(--accent);background:rgba(79,142,247,.04);}
+  .photoarea input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+  .picon{font-size:24px;margin-bottom:5px;}
+  .ptxt{font-size:13px;color:var(--text2);}
+
+  textarea.note{width:100%;padding:10px 12px;background:var(--surface2);
+    border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);
+    font-family:'DM Sans',sans-serif;font-size:13px;resize:vertical;
+    min-height:68px;outline:none;transition:border .2s;line-height:1.5;}
+  textarea.note:focus{border-color:var(--accent);}
+  textarea.note::placeholder{color:var(--text3);}
+
+  /* Fields row (strings + mpp) */
+  .fields-row{display:flex;gap:10px;margin-bottom:10px;}
+  .fields-row>div{flex:1;}
+
+  /* Location buttons */
+  .loc-row{margin-bottom:10px;}
+  .loc-row label{font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px;display:block;}
+  .loc-btns{display:flex;gap:8px;width:100%;}
+  .loc-btn{flex:1;padding:9px 10px;border-radius:var(--radius-sm);border:1px solid var(--border);
+    background:var(--surface2);color:var(--text2);font-size:12px;font-weight:600;text-align:center;
+    cursor:pointer;transition:all .15s;font-family:'DM Sans',sans-serif;}
+  .loc-btn:hover{border-color:var(--border-hover);}
+  .loc-btn.active{background:rgba(56,217,169,.15);border-color:var(--success);color:var(--success);}
+  .board-btns{display:flex;gap:8px;width:100%;}
+  .board-btn{flex:1;padding:9px 10px;border-radius:var(--radius-sm);border:1px solid var(--border);
+    background:var(--surface2);color:var(--text2);font-size:12px;font-weight:600;text-align:center;
+    cursor:pointer;transition:all .15s;font-family:'DM Sans',sans-serif;}
+  .board-btn:hover{border-color:var(--border-hover);}
+  .board-btn.active{background:rgba(56,217,169,.15);border-color:var(--success);color:var(--success);}
+  .mount-btns{display:flex;gap:8px;width:100%;}
+  .mount-btn{flex:1;padding:9px 10px;border-radius:var(--radius-sm);border:1px solid var(--border);
+    background:var(--surface2);color:var(--text2);font-size:12px;font-weight:600;text-align:center;
+    cursor:pointer;transition:all .15s;font-family:'DM Sans',sans-serif;}
+  .mount-btn:hover{border-color:var(--border-hover);}
+  .mount-btn.active{background:rgba(56,217,169,.15);border-color:var(--success);color:var(--success);}
+
+  /* ══ EDITOR OVERLAY ══ */
+  #editor-overlay{position:fixed;inset:0;z-index:999;background:#0a0c14;
+    display:none;flex-direction:column;}
+  #editor-overlay.open{display:flex;}
+
+  .ed-topbar{display:flex;align-items:center;gap:8px;padding:10px 14px;
+    background:var(--surface);border-bottom:1px solid var(--border);flex-wrap:wrap;}
+  .ed-title{font-size:13px;font-weight:700;color:var(--text);margin-right:4px;}
+
+  .tool-sep{width:1px;height:26px;background:var(--border);margin:0 3px;flex-shrink:0;}
+  .tbtn{width:36px;height:36px;border-radius:var(--radius-sm);border:1px solid var(--border);
+    background:var(--surface2);color:var(--text);font-size:15px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;}
+  .tbtn:hover{border-color:var(--border-hover);}
+  .tbtn.active{background:var(--accent);border-color:var(--accent);}
+  .tbtn.danger{border-color:rgba(255,92,92,.4);color:#ff5c5c;}
+  .tbtn.danger:hover{background:rgba(255,92,92,.15);}
+
+  .cswatch{width:26px;height:26px;border-radius:50%;cursor:pointer;border:2px solid transparent;
+    transition:border .15s;flex-shrink:0;}
+  .cswatch.active{border-color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.3);}
+
+  .szb{padding:0 10px;height:32px;border-radius:var(--radius-sm);border:1px solid var(--border);
+    background:var(--surface2);color:var(--text2);font-size:11px;font-weight:700;
+    cursor:pointer;transition:all .15s;font-family:'DM Sans',sans-serif;}
+  .szb.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+
+  .ed-actions{display:flex;gap:6px;margin-left:auto;flex-shrink:0;}
+
+  /* stamp tray */
+  .stamp-tray{background:var(--surface);border-bottom:1px solid var(--border);
+    padding:8px 14px;display:none;gap:8px;flex-wrap:wrap;align-items:center;}
+  .stamp-tray.open{display:flex;}
+  .stamp-tray-lbl{font-size:10px;font-weight:700;text-transform:uppercase;
+    letter-spacing:.6px;color:var(--text2);}
+  .sitem{display:flex;flex-direction:column;align-items:center;gap:3px;
+    padding:6px 10px;border-radius:var(--radius-sm);border:1px solid var(--border);
+    background:var(--surface2);cursor:pointer;transition:all .15s;}
+  .sitem:hover{border-color:var(--accent);}
+  .sitem.active{border-color:var(--accent);background:rgba(79,142,247,.15);}
+  .sitem-img{width:48px;height:36px;display:flex;align-items:center;justify-content:center;}
+  .sitem-lbl{font-size:9px;color:var(--text2);font-weight:600;text-align:center;line-height:1.3;}
+
+  .ed-canvas-wrap{flex:1;display:flex;align-items:center;justify-content:center;
+    overflow:auto;background:#0a0c14;padding:8px;}
+  #ed-canvas{max-width:100%;touch-action:none;cursor:crosshair;display:block;border-radius:4px;}
+
+  /* overview */
+  .ov-block{background:var(--surface);border:1px solid var(--border);
+    border-radius:var(--radius);margin-bottom:14px;overflow:hidden;}
+  .ov-btitle{padding:14px 18px;border-bottom:1px solid var(--border);
+    font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;}
+  .ov-row{display:flex;gap:12px;padding:12px 18px;border-bottom:1px solid var(--border);}
+  .ov-row:last-child{border-bottom:none;}
+  .ov-n{width:24px;height:24px;border-radius:50%;flex-shrink:0;background:var(--surface2);
+    border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;}
+  .ov-c{flex:1;}
+  .ov-lbl{font-size:13px;font-weight:600;margin-bottom:4px;}
+  .ov-note{font-size:12px;color:var(--text2);margin-bottom:6px;}
+  .ov-photos{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:5px;}
+  .ov-ph{width:54px;height:54px;object-fit:cover;border-radius:6px;border:1px solid var(--border);}
+  .ov-st{font-size:11px;display:flex;align-items:center;gap:4px;}
+  .stdot{width:7px;height:7px;border-radius:50%;}
+
+  .suc{text-align:center;padding:60px 20px;animation:fadeUp .4s ease;}
+  .suc-em{font-size:60px;display:block;margin-bottom:18px;
+    animation:pop .5s cubic-bezier(.175,.885,.32,1.275);}
+  @keyframes pop{0%{transform:scale(0)}100%{transform:scale(1)}}
+  .suc-t{font-size:24px;font-weight:700;margin-bottom:8px;}
+  .suc-s{color:var(--text2);font-size:13px;margin-bottom:28px;}
+
+  @media(max-width:500px){.fields-row{flex-direction:column;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <img src="data:image/png;base64,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" alt="AE"/>
+    <div class="logo-text">
+      <span class="logo-title">Bezoekrapport</span>
+      <span class="logo-datetime" id="header-datetime"></span>
+    </div>
+  </div>
+  <div class="hstep" id="hstep"></div>
+</header>
+
+<!-- ══ EDITOR ══ -->
+<div id="editor-overlay">
+
+  <div class="ed-topbar">
+    <span class="ed-title">Foto bewerken</span>
+
+    <!-- draw tools -->
+    <button class="tbtn active" id="tool-pen"    onclick="setTool('pen')"    title="Vrij tekenen">✏️</button>
+    <button class="tbtn"        id="tool-rect"   onclick="setTool('rect')"   title="Rechthoek" style="font-size:18px;font-weight:700">□</button>
+    <button class="tbtn"        id="tool-circle" onclick="setTool('circle')" title="Cirkel" style="font-size:20px;font-weight:700">○</button>
+    <button class="tbtn"        id="tool-text"   onclick="setTool('text')"   title="Tekst" style="font-size:16px;font-weight:700">T</button>
+    <button class="tbtn"        id="tool-stamp"  onclick="toggleTray()"      title="Stempel">🏷️</button>
+    <button class="tbtn"        id="tool-select" onclick="setTool('select')" title="Selecteren & Verplaatsen">👆</button>
+
+    <div class="tool-sep"></div>
+
+    <!-- colours -->
+    <div class="cswatch active" style="background:#ff3b30" onclick="setColor('#ff3b30',this)"></div>
+    <div class="cswatch"        style="background:#f7c948" onclick="setColor('#f7c948',this)"></div>
+    <div class="cswatch"        style="background:#34c759" onclick="setColor('#34c759',this)"></div>
+    <div class="cswatch"        style="background:#0a84ff" onclick="setColor('#0a84ff',this)"></div>
+    <div class="cswatch"        style="background:#ffffff" onclick="setColor('#ffffff',this)"></div>
+
+    <div class="tool-sep"></div>
+    <button class="tbtn" onclick="undoLast()" title="Ongedaan">↩️</button>
+    <button class="tbtn danger" onclick="clearAll()" title="Alles wissen">🗑️</button>
+
+    <div class="ed-actions">
+      <button class="btn btn-p" onclick="saveEditor()" style="padding:8px 16px;font-size:13px">✅ Opslaan</button>
+      <button class="btn btn-s" onclick="closeEditor()" style="padding:8px 16px;font-size:13px;font-weight:600">Back</button>
+    </div>
+  </div>
+
+  <!-- stamp tray -->
+  <div class="stamp-tray" id="stamp-tray">
+    <span class="stamp-tray-lbl">Stempels:</span>
+    <div class="sitem" id="si-daikin-binnen" onclick="pickStamp('daikin-binnen',this)">
+      <div class="sitem-img"><canvas id="prev-daikin-binnen" width="48" height="36"></canvas></div>
+      <div class="sitem-lbl">Daikin<br>Binnenunit</div>
+    </div>
+    <div class="sitem" id="si-daikin-buiten" onclick="pickStamp('daikin-buiten',this)">
+      <div class="sitem-img"><canvas id="prev-daikin-buiten" width="48" height="36"></canvas></div>
+      <div class="sitem-lbl">Daikin<br>Buitenunit</div>
+    </div>
+  </div>
+
+  <div class="ed-canvas-wrap">
+    <canvas id="ed-canvas"></canvas>
+    
+    <!-- TEXT INPUT OVERLAY -->
+    <div id="text-overlay" style="display:none;position:absolute;background:rgba(0,0,0,0.7);
+      border:2px solid var(--accent);border-radius:var(--radius-sm);padding:8px;min-width:200px">
+      <div style="display:flex;gap:6px;margin-bottom:8px;align-items:center">
+        <label style="font-size:11px;color:var(--text2)">Grootte:</label>
+        <select id="text-size" style="flex:1;padding:4px;background:var(--surface2);border:1px solid var(--border);
+          color:var(--text);border-radius:4px;font-size:12px">
+          <option value="14">Klein (14px)</option>
+          <option value="18" selected>Normaal (18px)</option>
+          <option value="24">Groot (24px)</option>
+          <option value="32">Extra groot (32px)</option>
+          <option value="48">Zeer groot (48px)</option>
+        </select>
+      </div>
+      <textarea id="text-input" placeholder="Typ hier je tekst..."
+        style="width:100%;min-height:80px;padding:8px;background:var(--surface);
+        border:1px solid var(--border);border-radius:4px;color:var(--text);
+        font-family:'DM Sans',sans-serif;font-size:14px;resize:vertical;outline:none"></textarea>
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <button onclick="cancelTextInput()" style="flex:1;padding:6px;background:var(--surface2);
+          border:1px solid var(--border);border-radius:4px;color:var(--text);cursor:pointer;font-size:12px;font-weight:600">
+          Back
+        </button>
+        <button onclick="confirmTextInput()" style="flex:1;padding:6px;background:var(--accent);
+          border:none;border-radius:4px;color:#fff;cursor:pointer;font-weight:600;font-size:12px">
+          OK
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<main>
+  <!-- STEP 1: HUB -->
+  <div class="panel active" id="panel-1">
+    <div class="ptitle">Verslag plaatsbezoek</div>
+    <div class="psub">Klik op een type om de checklist te starten</div>
+    <div class="tgrid" id="hub-grid">
+      <div class="tcard clickable solar" id="hub-solar" onclick="openChecklist('solar')">
+        <div class="tck">✓</div>
+        <div class="ticon">☀️</div>
+        <div class="tname">Zonnepanelen</div>
+        <div class="score-badges" id="scores-solar"></div>
+      </div>
+      <div class="tcard clickable battery" id="hub-battery" onclick="openChecklist('battery')">
+        <div class="tck">✓</div>
+        <div class="ticon">🔋</div>
+        <div class="tname">Thuisbatterij</div>
+        <div class="score-badges" id="scores-battery"></div>
+      </div>
+      <div class="tcard clickable airmo" id="hub-airmo" onclick="openChecklist('airmo')">
+        <div class="tck">✓</div>
+        <div class="ticon">🌡️</div>
+        <div class="tname">Lucht/Lucht Mono</div>
+        <div class="score-badges" id="scores-airmo"></div>
+      </div>
+      <div class="tcard clickable airmu" id="hub-airmu" onclick="openChecklist('airmu')">
+        <div class="tck">✓</div>
+        <div class="ticon">🌡️</div>
+        <div class="tname">Lucht/Lucht Multi</div>
+        <div class="score-badges" id="scores-airmu"></div>
+      </div>
+      <div class="tcard clickable airwater" id="hub-airwater" onclick="openChecklist('airwater')">
+        <div class="tck">✓</div>
+        <div class="ticon">💧</div>
+        <div class="tname">Lucht/Water</div>
+        <div class="score-badges" id="scores-airwater"></div>
+      </div>
+      <div class="tcard disabled"><div class="ticon">🌍</div><div class="tname">Geothermie</div><div class="tsoon">Binnenkort</div></div>
+      <div class="tcard clickable charge" id="hub-charge" onclick="openChecklist('charge')">
+        <div class="tck">✓</div>
+        <div class="ticon">⚡</div>
+        <div class="tname">Laadpaal</div>
+        <div class="score-badges" id="scores-charge"></div>
+      </div>
+    </div>
+    <!-- Save all button - appears when at least 1 checklist is done -->
+    <div id="hub-save-row" style="display:none;margin-top:12px">
+      <button class="btn btn-g" onclick="finalizeAllReports()" style="width:100%;padding:14px">✅ Alles opslaan</button>
+    </div>
+  </div>
+
+  <!-- STEP 2: CHECKLIST -->
+  <div class="panel" id="panel-2">
+    <div class="ptitle">Checklist</div>
+    <div class="psub">Maak foto's, bewerk ze en voeg toelichting toe</div>
+    <div class="rtabs" id="rtabs"></div>
+    <div class="progwrap">
+      <div class="progmeta"><span id="prog-txt">0 van 0</span><span id="prog-pct">0%</span></div>
+      <div class="progtrack"><div class="progfill" id="prog-fill" style="width:0%"></div></div>
+      <div class="prog-scores" id="prog-scores"></div>
+    </div>
+    <div class="clist" id="clist"></div>
+    <div class="brow" style="margin-top:24px">
+      <button class="btn btn-s" onclick="goBackToHub()">← Terug</button>
+      <button class="btn btn-p" onclick="saveChecklistAndReturn()">💾 Bewaar</button>
+      <button class="btn btn-s" id="btn-extra-split" onclick="addExtraSplit()" style="display:none">+ Extra monosplit</button>
+      <button class="btn btn-s" id="btn-extra-multi-split" onclick="addExtraMultiSplit()" style="display:none">+ Extra multisplit</button>
+    </div>
+  </div>
+
+  <!-- STEP 3: OVERVIEW -->
+  <div class="panel" id="panel-3">
+    <div class="ptitle">Overzicht</div>
+    <div class="psub">Controleer alles voor je naar de AI controle gaat</div>
+    <div id="overview"></div>
+    <div class="brow" style="margin-top:24px">
+      <button class="btn btn-s" onclick="goStep(2)">← Terug</button>
+      <button class="btn btn-p" onclick="showAICheck()" style="background:linear-gradient(135deg,#f7c948,#e8b738);color:#3a2800">
+        🤖 AI Controle
+      </button>
+    </div>
+  </div>
+
+  <!-- STEP 3.5: AI CHECK -->
+  <div class="panel" id="panel-ai">
+    <div class="ptitle">🤖 AI Controle</div>
+    <div class="psub">Controleren of alle info compleet is voor de technieker</div>
+    
+    <div id="ai-result" style="background:var(--surface);border:1px solid var(--border);
+      border-radius:var(--radius);padding:24px;margin-bottom:24px;min-height:200px">
+      <div style="text-align:center;padding:40px 20px">
+        <div style="color:var(--text2);font-size:14px">Klik op "Controle uitvoeren" om te beginnen</div>
+      </div>
+    </div>
+
+    <div class="brow">
+      <button class="btn btn-s" onclick="goStep(3)">← Terug</button>
+      <button class="btn btn-p" id="btn-run-ai" onclick="runAICheck()" style="background:linear-gradient(135deg,#f7c948,#e8b738);color:#3a2800">
+        ▶️ Controle uitvoeren
+      </button>
+      <button class="btn btn-p" id="btn-after-ai" onclick="finalizeAllReports()" style="display:none">
+        ✅ Alles opslaan
+      </button>
+    </div>
+  </div>
+
+  <!-- SUCCESS -->
+  <div class="panel" id="panel-4">
+    <div class="suc">
+      <span class="suc-em">✅</span>
+      <div class="suc-t">Rapport opgeslagen!</div>
+      <div class="suc-s" id="suc-msg"></div>
+      <button class="btn btn-s" onclick="backToHub()" style="margin-bottom:10px">← Terug</button>
+      <button class="btn btn-s" onclick="reset()">+ Nieuw rapport</button>
+    </div>
+  </div>
+</main>
+
+<script>
+// ══════════════════════════
+// DATA
+// ══════════════════════════
+const TYPES = {
+  solar: { label:'Zonnepanelen', icon:'☀️', cls:'solar', items:[
+    {key:'woning',    label:'Woning',                     shared:true, optional:true},
+    {key:'dak',       label:'Dak',                        shared:false},
+    {key:'omvormer',  label:'Omvormer',                   shared:true, hasStrings:true, hasMppTrackers:true, hasLocation:true},
+    {key:'traject',   label:'Traject UTP voor powermeter',shared:false, optional:true},
+    {key:'elek-bord', label:'Elektrisch bord',            shared:true, hasBoardType:true},
+    {key:'hoofdzek',  label:'Hoofdzekering',              shared:true},
+  ]},
+  battery: { label:'Thuisbatterij', icon:'🔋', cls:'battery', items:[
+    {key:'woning',      label:'Woning',                 shared:true, optional:true},
+    {key:'loc-bat',     label:'Locatie thuisbatterij',  shared:false, hasLocation:true},
+    {key:'omvormer',    label:'Omvormer',               shared:true, hasStrings:true, hasMppTrackers:true, hasLocation:true},
+    {key:'internet',    label:'Internet locatie',       shared:false},
+    {key:'elek-bord',   label:'Elektrisch bord',        shared:true, hasBoardType:true},
+    {key:'hoofdzek',    label:'Hoofdzekering',          shared:true},
+  ]},
+  airmo: { label:'Lucht/Lucht Mono', icon:'🌡️', cls:'airmo', items:[
+    {key:'woning',       label:'Woning',                  shared:true, optional:true},
+    {key:'buitenunit',   label:'Buitenunit',              shared:false, hasFixType:true},
+    {key:'binnenunit',   label:'Binnenunit',              shared:false, hasUnitType:true},
+    {key:'elek-aansl',   label:'Elektrische aansluiting', shared:false, hasConnType:true},
+    {key:'beschrijving', label:'Beschrijving project',    shared:false, noPhoto:true},
+  ]},
+  airmu: { label:'Lucht/Lucht Multi', icon:'🌡️', cls:'airmu', items:[
+    {key:'woning',          label:'Woning',                  shared:true, optional:true},
+    {key:'buitenunit-m',    label:'Buitenunit',              shared:false, hasFixType:true},
+    {key:'binnenunit-m-1',  label:'Binnenunit 1/2',          shared:false, hasUnitType:true},
+    {key:'binnenunit-m-2',  label:'Binnenunit 2/2',          shared:false, hasUnitType:true},
+    {key:'elek-aansl-m',    label:'Elektrische aansluiting', shared:false, hasConnType:true},
+    {key:'beschrijving-m',  label:'Beschrijving project',    shared:false, noPhoto:true},
+  ]},
+  airwater: { label:'Lucht/Water', icon:'💧', cls:'airwater', items:[
+    {key:'woning',            label:'Woning',                  shared:true, optional:true, hasFuelType:true},
+    {key:'vloervw-w',         label:'Vloerverwarming',         shared:false, hasSqm:true, optional:true},
+    {key:'radiatoren-w',      label:'Radiatoren',              shared:false, hasRadRows:true, optional:true},
+    {key:'buitenunit-w',      label:'Buitenunit',              shared:false, hasFixType:true, hasPowerCalc:true},
+    {key:'binnenunit-w',      label:'Binnenunit',              shared:false, hasUnitType:true},
+    {key:'elek-aansl-w',      label:'Elektrische aansluiting', shared:false},
+    {key:'beschrijving-w',    label:'Beschrijving project',    shared:false, noPhoto:true},
+  ]},
+  charge: { label:'Laadpaal', icon:'⚡', cls:'charge', items:[
+    {key:'woning',          label:'Woning',                shared:true, optional:true},
+    {key:'loc-laadpunt',    label:'Locatie laadpunt',      shared:false, hasMountType:true},
+    {key:'internet',        label:'Internet locatie',      shared:false},
+    {key:'elek-bord',       label:'Elektrisch bord',       shared:true, hasBoardType:true},
+    {key:'kabelroute',      label:'Kabelroute',            shared:false},
+    {key:'beschrijving-c',  label:'Beschrijving project',  shared:false, noPhoto:true},
+  ]}
+};
+
+const STAMPS = {
+  'daikin-binnen':{ label:'Daikin Binnenunit', emoji:null, draw: drawBinnen },
+  'daikin-buiten':{ label:'Daikin Buitenunit', emoji:null, draw: drawBuiten },
+};
+
+// ══════════════════════════
+// STATE
+// ══════════════════════════
+let selected=[], activeTab='', itemData={}, completedTypes=new Set(), deletedItems=new Set(), extraSplitCount=0, extraMultiSplitCount=0;
+
+// Always use shared key for shared items (data stored once)
+function getSK(type,item){
+  return item.shared ? item.key : type+'_'+item.key;
+}
+function itemsForTab(type){
+  const activeTypes=[...new Set([...selected,...completedTypes])];
+  const both=activeTypes.length>1;
+  // Find shared keys across all active types
+  let sharedKeys=new Set();
+  if(both){
+    const allItems={};
+    activeTypes.forEach(t=>{if(TYPES[t])TYPES[t].items.forEach(i=>{if(!allItems[i.key])allItems[i.key]=0;allItems[i.key]++;});});
+    Object.entries(allItems).forEach(([k,c])=>{if(c>1)sharedKeys.add(k);});
+  }
+  return TYPES[type].items.map(item=>({...item,
+    isShared:both&&item.shared&&sharedKeys.has(item.key),
+    sk:getSK(type,item)
+  }));
+}
+
+// ══════════════════════════
+// DATE/TIME in header
+// ══════════════════════════
+function updateDateTime(){
+  const now=new Date();
+  const dd=String(now.getDate()).padStart(2,'0');
+  const mm=String(now.getMonth()+1).padStart(2,'0');
+  const yyyy=now.getFullYear();
+  const hh=String(now.getHours()).padStart(2,'0');
+  const mi=String(now.getMinutes()).padStart(2,'0');
+  document.getElementById('header-datetime').textContent=`${dd}/${mm}/${yyyy} — ${hh}:${mi}`;
+}
+updateDateTime();
+setInterval(updateDateTime,60000);
+
+// ══════════════════════════
+// HUB (Step 1)
+// ══════════════════════════
+function openChecklist(type){
+  if(!selected.includes(type)) selected.push(type);
+  activeTab=type;
+  showPanel('panel-2');
+  renderChecklist();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function goBackToHub(){
+  showPanel('panel-1');
+  updateHubCards();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function backToHub(){
+  showPanel('panel-1');
+  updateHubCards();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function showPanel(id){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function calculateScores(type){
+  const items=TYPES[type].items;
+  // Filter out deleted items
+  const activeItems=items.filter(item=>!deletedItems.has(getSK(type,item)));
+  let photoScore=0, textScore=0;
+  const total=activeItems.length;
+  const photoItems=activeItems.filter(i=>!i.noPhoto);
+  const photoTotal=photoItems.length;
+  if(total===0) return {photo:0,text:0};
+  const perTextItem=100/total;
+  const perPhotoItem=photoTotal>0?100/photoTotal:0;
+  activeItems.forEach(item=>{
+    const sk=getSK(type,item);
+    const d=itemData[sk]||{photos:[],notes:'',strings:'',mppTrackers:'',location:''};
+    if(!item.noPhoto && d.photos.length>0) photoScore+=perPhotoItem;
+    if(d.notes.trim().length>=10) textScore+=perTextItem;
+    else if(d.notes.trim().length>0) textScore+=perTextItem*0.5;
+  });
+  return {photo:Math.round(photoScore),text:Math.round(textScore)};
+}
+
+function scoreColorClass(val){
+  if(val>=100) return 'green';
+  if(val<=50) return 'red';
+  return '';
+}
+
+function updateHubCards(){
+  const allTypes=['solar','battery','airmo','airmu','airwater','charge'];
+  for(let i=1;i<=extraSplitCount;i++) allTypes.push('airmo-'+i);
+  for(let i=1;i<=extraMultiSplitCount;i++) allTypes.push('airmu-'+i);
+  allTypes.forEach(type=>{
+    const card=document.getElementById('hub-'+type);
+    const scoresEl=document.getElementById('scores-'+type);
+    if(!card||!scoresEl) return;
+    if(completedTypes.has(type)){
+      card.classList.add('completed');
+      const scores=calculateScores(type);
+      scoresEl.innerHTML=`
+        <span class="score-badge" data-tip="${scores.photo}% foto's">📷 <span class="score-val ${scoreColorClass(scores.photo)}">${scores.photo}%</span></span>
+        <span class="score-badge" data-tip="${scores.text}% uitleg">📝 <span class="score-val ${scoreColorClass(scores.text)}">${scores.text}%</span></span>`;
+    } else {
+      card.classList.remove('completed');
+      scoresEl.innerHTML='';
+    }
+  });
+  // Show save button if at least 1 completed
+  document.getElementById('hub-save-row').style.display=completedTypes.size>0?'block':'none';
+  document.getElementById('hstep').textContent='';
+}
+
+function saveChecklistAndReturn(){
+  const items=itemsForTab(activeTab);
+  const isExtraAirmo=activeTab==='airmo'||activeTab.startsWith('airmo-');
+  const isExtraAirmu=activeTab==='airmu'||activeTab.startsWith('airmu-');
+  const isSplitType=isExtraAirmo||isExtraAirmu;
+
+  // Check if at least 1 item has data (photo or text)
+  // For splits: only count non-shared (own) items
+  const activeItems=items.filter(i=>!deletedItems.has(i.sk));
+  const hasOwnData=activeItems.some(item=>{
+    if(isSplitType && item.shared) return false; // shared data doesn't count for splits
+    const d=itemData[item.sk];
+    if(!d) return false;
+    return d.photos.length>0 || d.notes.trim()!=='';
+  });
+
+  // For splits: empty split gets removed silently
+  if(isExtraAirmo && !hasOwnData){
+    removeEmptyAirmo(activeTab);
+    goBackToHub();
+    return;
+  }
+  if(isExtraAirmu && !hasOwnData){
+    removeEmptyAirmu(activeTab);
+    goBackToHub();
+    return;
+  }
+
+  // For all types: need at least 1 filled item to complete
+  if(!hasOwnData){
+    goBackToHub();
+    return;
+  }
+
+  for(const item of items){
+    if(deletedItems.has(item.sk)) continue;
+    if(item.hasStrings||item.hasMppTrackers){
+      const d=itemData[item.sk]||{};
+      if(item.hasStrings && (!d.strings||d.strings.trim()==='')){
+        showToast(item.sk,'Aantal strings is verplicht');return;
+      }
+      if(item.hasMppTrackers && (!d.mppTrackers||d.mppTrackers.trim()==='')){
+        showToast(item.sk,'Aantal MPP trackers is verplicht');return;
+      }
+    }
+    if(item.hasLocation){
+      const d=itemData[item.sk]||{};
+      if(!d.location){
+        showToast(item.sk,`Locatie ${item.label.toLowerCase()} is verplicht`);return;
+      }
+    }
+    if(item.hasFixType){
+      const d=itemData[item.sk]||{};
+      if(!d.fixType){
+        showToast(item.sk,'Bevestigingstechniek verplicht');return;
+      }
+    }
+    if(item.hasUnitType){
+      const d=itemData[item.sk]||{};
+      if(!d.unitType){
+        showToast(item.sk,'Type binnenunit verplicht');return;
+      }
+    }
+  }
+  completedTypes.add(activeTab);
+  goBackToHub();
+}
+
+function removeEmptyAirmo(typeKey){
+  // Remove from selected
+  selected=selected.filter(t=>t!==typeKey);
+  // Remove from completedTypes
+  completedTypes.delete(typeKey);
+  // If it's an extra (not the original airmo), remove hub card and type
+  if(typeKey.startsWith('airmo-')){
+    const card=document.getElementById('hub-'+typeKey);
+    if(card) card.remove();
+    delete TYPES[typeKey];
+    extraSplitCount--;
+    // Renumber remaining
+    if(extraSplitCount>0){
+      updateMonoLabels();
+      updateMonoHubCards();
+    } else {
+      // Back to single mono — reset name
+      TYPES['airmo'].label='Lucht/Lucht Mono';
+      const origName=document.querySelector('#hub-airmo .tname');
+      if(origName) origName.textContent='Lucht/Lucht Mono';
+    }
+  }
+}
+
+function removeEmptyAirmu(typeKey){
+  selected=selected.filter(t=>t!==typeKey);
+  completedTypes.delete(typeKey);
+  if(typeKey.startsWith('airmu-')){
+    const card=document.getElementById('hub-'+typeKey);
+    if(card) card.remove();
+    delete TYPES[typeKey];
+    extraMultiSplitCount--;
+    if(extraMultiSplitCount>0){
+      updateMultiLabels();
+      updateMultiHubCards();
+    } else {
+      TYPES['airmu'].label='Lucht/Lucht Multi';
+      const origName=document.querySelector('#hub-airmu .tname');
+      if(origName) origName.textContent='Lucht/Lucht Multi';
+    }
+  }
+}
+
+// ══════════════════════════
+// STEP 2: CHECKLIST
+// ══════════════════════════
+function addExtraSplit(){
+  // Mark current mono as completed only if at least 1 non-shared item has data
+  const curItems=itemsForTab(activeTab);
+  const hasCurData=curItems.filter(i=>!deletedItems.has(i.sk)).some(item=>{
+    if(item.shared) return false;
+    const d=itemData[item.sk];
+    return d && (d.photos.length>0 || d.notes.trim()!=='');
+  });
+  if(hasCurData) completedTypes.add(activeTab);
+  extraSplitCount++;
+  const newKey='airmo-'+extraSplitCount;
+  const totalMono=extraSplitCount+1; // original airmo + extras
+  // Create new type dynamically
+  TYPES[newKey]={label:`Lucht/Lucht Mono ${totalMono}/${totalMono}`, icon:'🌡️', cls:'airmo', items:[
+    {key:'woning',                             label:'Woning',                  shared:true, optional:true},
+    {key:'buitenunit-e'+extraSplitCount,       label:'Buitenunit',              shared:false, hasFixType:true},
+    {key:'binnenunit-e'+extraSplitCount,       label:'Binnenunit',              shared:false, hasUnitType:true},
+    {key:'elek-aansl-e'+extraSplitCount,       label:'Elektrische aansluiting', shared:false, hasConnType:true},
+    {key:'beschrijving-e'+extraSplitCount,     label:'Beschrijving project',    shared:false, noPhoto:true},
+  ]};
+  // Rename all mono labels with n/total
+  updateMonoLabels();
+  // Add to selected and switch to it
+  if(!selected.includes(newKey)) selected.push(newKey);
+  activeTab=newKey;
+  // Add hub card dynamically
+  const hubGrid=document.getElementById('hub-grid');
+  const disabledCards=hubGrid.querySelectorAll('.tcard.disabled');
+  const newCard=document.createElement('div');
+  newCard.className='tcard clickable airmo';
+  newCard.id='hub-'+newKey;
+  newCard.onclick=()=>openChecklist(newKey);
+  newCard.innerHTML=`<div class="tck">✓</div><div class="ticon">🌡️</div><div class="tname">${TYPES[newKey].label}</div><div class="score-badges" id="scores-${newKey}"></div>`;
+  if(disabledCards.length>0) hubGrid.insertBefore(newCard,disabledCards[0]);
+  else hubGrid.appendChild(newCard);
+  // Update all hub card names
+  updateMonoHubCards();
+  renderChecklist();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function updateMonoLabels(){
+  const total=extraSplitCount+1;
+  // Rename original airmo
+  TYPES['airmo'].label=`Lucht/Lucht Mono 1/${total}`;
+  // Rename extras
+  for(let i=1;i<=extraSplitCount;i++){
+    TYPES['airmo-'+i].label=`Lucht/Lucht Mono ${i+1}/${total}`;
+  }
+}
+
+function updateMonoHubCards(){
+  const total=extraSplitCount+1;
+  // Update original
+  const origName=document.querySelector('#hub-airmo .tname');
+  if(origName) origName.textContent=TYPES['airmo'].label;
+  // Update extras
+  for(let i=1;i<=extraSplitCount;i++){
+    const name=document.querySelector('#hub-airmo-'+i+' .tname');
+    if(name) name.textContent=TYPES['airmo-'+i].label;
+  }
+}
+
+function addExtraMultiSplit(){
+  const curItems=itemsForTab(activeTab);
+  const hasCurData=curItems.filter(i=>!deletedItems.has(i.sk)).some(item=>{
+    if(item.shared) return false;
+    const d=itemData[item.sk];
+    return d && (d.photos.length>0 || d.notes.trim()!=='');
+  });
+  if(hasCurData) completedTypes.add(activeTab);
+  extraMultiSplitCount++;
+  const newKey='airmu-'+extraMultiSplitCount;
+  const totalMulti=extraMultiSplitCount+1;
+  TYPES[newKey]={label:`Lucht/Lucht Multi ${totalMulti}/${totalMulti}`, icon:'🌡️', cls:'airmu', items:[
+    {key:'woning',                                  label:'Woning',                  shared:true, optional:true},
+    {key:'buitenunit-mu'+extraMultiSplitCount,      label:'Buitenunit',              shared:false, hasFixType:true},
+    {key:'binnenunit-mu'+extraMultiSplitCount+'-1', label:'Binnenunit 1/2',          shared:false, hasUnitType:true},
+    {key:'binnenunit-mu'+extraMultiSplitCount+'-2', label:'Binnenunit 2/2',          shared:false, hasUnitType:true},
+    {key:'elek-aansl-mu'+extraMultiSplitCount,      label:'Elektrische aansluiting', shared:false, hasConnType:true},
+    {key:'beschrijving-mu'+extraMultiSplitCount,    label:'Beschrijving project',    shared:false, noPhoto:true},
+  ]};
+  updateMultiLabels();
+  if(!selected.includes(newKey)) selected.push(newKey);
+  activeTab=newKey;
+  const hubGrid=document.getElementById('hub-grid');
+  const disabledCards=hubGrid.querySelectorAll('.tcard.disabled');
+  const newCard=document.createElement('div');
+  newCard.className='tcard clickable airmu';
+  newCard.id='hub-'+newKey;
+  newCard.onclick=()=>openChecklist(newKey);
+  newCard.innerHTML=`<div class="tck">✓</div><div class="ticon">🌡️</div><div class="tname">${TYPES[newKey].label}</div><div class="score-badges" id="scores-${newKey}"></div>`;
+  if(disabledCards.length>0) hubGrid.insertBefore(newCard,disabledCards[0]);
+  else hubGrid.appendChild(newCard);
+  updateMultiHubCards();
+  renderChecklist();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function updateMultiLabels(){
+  const total=extraMultiSplitCount+1;
+  TYPES['airmu'].label=`Lucht/Lucht Multi 1/${total}`;
+  for(let i=1;i<=extraMultiSplitCount;i++){
+    TYPES['airmu-'+i].label=`Lucht/Lucht Multi ${i+1}/${total}`;
+  }
+}
+
+function updateMultiHubCards(){
+  const total=extraMultiSplitCount+1;
+  const origName=document.querySelector('#hub-airmu .tname');
+  if(origName) origName.textContent=TYPES['airmu'].label;
+  for(let i=1;i<=extraMultiSplitCount;i++){
+    const name=document.querySelector('#hub-airmu-'+i+' .tname');
+    if(name) name.textContent=TYPES['airmu-'+i].label;
+  }
+}
+
+function countInnerUnits(typeKey){
+  if(!TYPES[typeKey]) return 0;
+  return TYPES[typeKey].items.filter(i=>i.key.startsWith('binnenunit-')).length;
+}
+
+function getInnerKeyPrefix(typeKey){
+  if(typeKey==='airmu') return 'binnenunit-m-';
+  // airmu-1 -> binnenunit-mu1-, airmu-2 -> binnenunit-mu2-, etc.
+  const num=typeKey.replace('airmu-','');
+  return 'binnenunit-mu'+num+'-';
+}
+
+function addExtraInnerUnit(){
+  const typeKey=activeTab;
+  const current=countInnerUnits(typeKey);
+  if(current>=5){
+    // Find last binnenunit sk for toast
+    const innerItems=TYPES[typeKey].items.filter(i=>i.key.startsWith('binnenunit-'));
+    const lastInner=innerItems[innerItems.length-1];
+    if(lastInner){
+      const sk=getSK(typeKey,lastInner);
+      showToast(sk,'Slechts 5 binnenunits mogelijk');
+    }
+    return;
+  }
+  const newCount=current+1;
+  const prefix=getInnerKeyPrefix(typeKey);
+  const newItem={key:prefix+newCount, label:`Binnenunit ${newCount}/${newCount}`, shared:false, hasUnitType:true};
+  // Insert before elektrische aansluiting
+  const items=TYPES[typeKey].items;
+  const elekIdx=items.findIndex(i=>i.key.startsWith('elek-aansl'));
+  if(elekIdx!==-1) items.splice(elekIdx,0,newItem);
+  else items.push(newItem);
+  // Renumber all binnenunit labels
+  renumberInnerUnits(typeKey);
+  renderItems();updateProgress();
+  // Open the newly added binnenunit
+  const newSk=getSK(typeKey,newItem);
+  const ci=document.getElementById('ci-'+newSk);
+  if(ci){
+    document.querySelectorAll('.ci.open').forEach(e=>e.classList.remove('open'));
+    ci.classList.add('open');
+    ci.scrollIntoView({behavior:'smooth',block:'center'});
+  }
+}
+
+function renumberInnerUnits(typeKey){
+  const items=TYPES[typeKey].items;
+  const innerItems=items.filter(i=>i.key.startsWith('binnenunit-'));
+  const total=innerItems.length;
+  innerItems.forEach((item,idx)=>{
+    item.label=`Binnenunit ${idx+1}/${total}`;
+  });
+}
+
+function removeLastInnerUnit(){
+  const typeKey=activeTab;
+  const current=countInnerUnits(typeKey);
+  if(current<=2) return;
+  const items=TYPES[typeKey].items;
+  const innerItems=items.filter(i=>i.key.startsWith('binnenunit-'));
+  const lastItem=innerItems[innerItems.length-1];
+  // Remove from items array
+  const idx=items.indexOf(lastItem);
+  if(idx!==-1) items.splice(idx,1);
+  // Clean up data
+  const sk=getSK(typeKey,lastItem);
+  delete itemData[sk];
+  deletedItems.delete(sk);
+  renumberInnerUnits(typeKey);
+  renderItems();updateProgress();
+}
+
+function calcPowerEstimate(typeKey){
+  // Get woning data (shared key)
+  const woningSk='woning';
+  const woningData=itemData[woningSk];
+  if(!woningData) return null;
+  const fuel=woningData.fuelType;
+  const fuelAmount=parseFloat(woningData.fuelAmount);
+  const buildYear=parseInt(woningData.buildYear);
+  if(!fuel||isNaN(fuelAmount)||fuelAmount<=0||isNaN(buildYear)||buildYear<1900) return null;
+
+  // Get vloerverwarming data
+  const vloerSk=getSK(typeKey,{shared:false,key:'vloervw-w'});
+  const vloerData=itemData[vloerSk];
+  const vloerDeleted=deletedItems.has(vloerSk);
+  let totalSqm=0;
+  if(vloerData&&vloerData.sqmRows&&!vloerDeleted){
+    vloerData.sqmRows.forEach(r=>{if(r.sqm&&parseFloat(r.sqm)>0)totalSqm+=parseFloat(r.sqm);});
+  }
+
+  // Get radiatoren data
+  const radSk=getSK(typeKey,{shared:false,key:'radiatoren-w'});
+  const radData=itemData[radSk];
+  const radDeleted=deletedItems.has(radSk);
+  let totalRad=0;
+  if(radData&&radData.radRows&&!radDeleted){
+    radData.radRows.forEach(r=>{if(r.count&&parseInt(r.count)>0)totalRad+=parseInt(r.count);});
+  }
+
+  // Need at least one heat distribution system
+  if(totalSqm===0&&totalRad===0) return null;
+
+  // 1. Convert fuel to kWh/year
+  const kwhPerUnit=10; // 1m³ gas ≈ 10 kWh, 1L mazout ≈ 10 kWh
+  const brutokWh=fuelAmount*kwhPerUnit;
+
+  // 2. Boiler efficiency based on build year
+  let rendement;
+  if(buildYear<1970) rendement=0.70;
+  else if(buildYear<1990) rendement=0.80;
+  else if(buildYear<2010) rendement=0.88;
+  else rendement=0.95;
+
+  // 3. Net heat demand
+  const warmtebehoefte=brutokWh*rendement;
+
+  // 4. Full load hours based on heat distribution
+  // Estimate radiator coverage: each radiator ~15m²
+  const radSqmEstimate=totalRad*15;
+  const totalCoverage=totalSqm+radSqmEstimate;
+  let vollasturen;
+  if(totalCoverage>0){
+    const vloerFractie=totalSqm/totalCoverage;
+    vollasturen=vloerFractie*1800+(1-vloerFractie)*1500;
+  } else {
+    vollasturen=1600;
+  }
+
+  // 5. Insulation correction
+  let correctie;
+  if(buildYear<1970) correctie=1.15;
+  else if(buildYear<1990) correctie=1.05;
+  else correctie=1.0;
+
+  // 6. Calculate power
+  let vermogen=(warmtebehoefte/vollasturen)*correctie;
+  vermogen=Math.round(vermogen*10)/10;
+
+  // Build details
+  const fuelLabel=fuel==='gas'?`${fuelAmount} m³ gas`:`${fuelAmount} L mazout`;
+  const rendPct=Math.round(rendement*100);
+  let distLabel=[];
+  if(totalSqm>0) distLabel.push(`${totalSqm} m² vloerverwarming`);
+  if(totalRad>0) distLabel.push(`${totalRad} radiator${totalRad>1?'en':''}`);
+
+  const details=`Verbruik: ${fuelLabel} → ${Math.round(brutokWh).toLocaleString('nl')} kWh bruto<br>`
+    +`Ketelrendement: ${rendPct}% (bouwjaar ${buildYear}) → ${Math.round(warmtebehoefte).toLocaleString('nl')} kWh netto<br>`
+    +`Afgifte: ${distLabel.join(' + ')} → ${Math.round(vollasturen)} vollasturen<br>`
+    +`${buildYear<1990?`Isolatiecorrectie: ×${correctie}<br>`:''}`
+    +`<strong>Geschat vermogen: ${vermogen} kW</strong>`;
+
+  return {kw:vermogen, details};
+}
+
+function renderChecklist(){
+  if(!activeTab||!selected.includes(activeTab))activeTab=selected[0];
+  // Only show tabs if multiple selected
+  if(selected.length>1){
+    document.getElementById('rtabs').innerHTML=selected.map(t=>{
+      const d=TYPES[t];
+      return `<button class="rtab ${d.cls} ${activeTab===t?'active':''}" onclick="switchTab('${t}',this)">${d.icon} ${d.label}</button>`;
+    }).join('');
+  } else {
+    document.getElementById('rtabs').innerHTML='';
+  }
+  // Show extra split button for airmo or airmu type checklists
+  const isAirmo=activeTab==='airmo'||activeTab.startsWith('airmo-');
+  const isAirmu=activeTab==='airmu'||activeTab.startsWith('airmu-');
+  document.getElementById('btn-extra-split').style.display=isAirmo?'inline-block':'none';
+  document.getElementById('btn-extra-multi-split').style.display=isAirmu?'inline-block':'none';
+  renderItems();updateProgress();
+}
+
+function switchTab(t,el){
+  activeTab=t;
+  document.querySelectorAll('.rtab').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  renderItems();updateProgress();
+}
+
+function renderItems(){
+  let num=0;
+  const allItems=itemsForTab(activeTab);
+  const isAirmu=activeTab==='airmu'||activeTab.startsWith('airmu-');
+  // Find the last binnenunit key for this airmu type
+  let lastInnerSk='';
+  if(isAirmu){
+    const innerItems=allItems.filter(i=>i.key.startsWith('binnenunit-')&&!deletedItems.has(i.sk));
+    if(innerItems.length>0) lastInnerSk=innerItems[innerItems.length-1].sk;
+  }
+  document.getElementById('clist').innerHTML=allItems.map((item)=>{
+    const d=itemData[item.sk]||{photos:[],notes:'',strings:'',mppTrackers:'',location:''};
+    const done=d.photos.length>0||d.notes.trim()!=='';
+    const isDeleted=deletedItems.has(item.sk);
+    if(!isDeleted) num++;
+    const displayNum=isDeleted?'—':num;
+    const thumbs=d.photos.map((p,pi)=>`
+      <div class="twrap" onclick="openEditor('${item.sk}',${pi})">
+        <img src="${p}"/>
+        <div class="edit-badge">✏️ EDIT</div>
+        <button class="tdel" onclick="event.stopPropagation();delPhoto('${item.sk}',${pi})">×</button>
+      </div>`).join('');
+    
+    let fieldsHtml='';
+    if(item.hasStrings||item.hasMppTrackers||item.hasLocation||item.hasBoardType||item.hasMountType||item.hasFixType||item.hasUnitType||item.hasConnType||item.hasSqm||item.hasRadRows||item.hasFuelType){
+      fieldsHtml+=`<div class="toast-inline" id="toast-${item.sk}"></div>`;
+    }
+    if(item.hasStrings||item.hasMppTrackers){
+      fieldsHtml+=`<div class="fields-row">`;
+      if(item.hasStrings){
+        fieldsHtml+=`<div>
+          <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px">Aantal strings:</label>
+          <input type="number" class="note" placeholder="Min 1" min="1" max="8"
+            style="min-height:auto;padding:10px 12px;resize:none"
+            value="${d.strings||''}"
+            oninput="hideToast('${item.sk}')"
+            onchange="saveStrings('${item.sk}',this.value)"/>
+        </div>`;
+      }
+      if(item.hasMppTrackers){
+        fieldsHtml+=`<div>
+          <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px">Aantal MPP trackers:</label>
+          <input type="number" class="note" placeholder="Max 4" min="1" max="4"
+            style="min-height:auto;padding:10px 12px;resize:none"
+            value="${d.mppTrackers||''}"
+            oninput="hideToast('${item.sk}')"
+            onchange="saveMppTrackers('${item.sk}',this.value)"/>
+        </div>`;
+      }
+      fieldsHtml+=`</div>`;
+    }
+    if(item.hasSqm){
+      ensureData(item.sk);
+      if(!itemData[item.sk].sqmRows||itemData[item.sk].sqmRows.length===0){
+        itemData[item.sk].sqmRows=[{floor:'',sqm:''}];
+      }
+      const rows=itemData[item.sk].sqmRows;
+      fieldsHtml+=rows.map((row,ri)=>{
+        const rowReady=row.floor!=='';
+        return `<div class="fields-row" style="align-items:flex-end;gap:8px">
+        <div style="flex:1">
+          ${ri===0?'<label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px">Verdieping:</label>':''}
+          <select class="note" style="min-height:auto;padding:10px 12px;resize:none;appearance:auto"
+            onchange="saveSqmRow('${item.sk}',${ri},'floor',this.value)">
+            <option value="" ${row.floor===''?'selected':''}>— Kies —</option>
+            <option value="kelder" ${row.floor==='kelder'?'selected':''}>Kelder</option>
+            <option value="gelijkvloers" ${row.floor==='gelijkvloers'?'selected':''}>Gelijkvloers</option>
+            <option value="1e verdiep" ${row.floor==='1e verdiep'?'selected':''}>1e verdiep</option>
+            <option value="2e verdiep" ${row.floor==='2e verdiep'?'selected':''}>2e verdiep</option>
+          </select>
+        </div>
+        <div style="flex:1">
+          ${ri===0?'<label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px">Aantal m²:</label>':''}
+          <input type="number" class="note" placeholder="m²" min="1" step="1"
+            style="min-height:auto;padding:10px 12px;resize:none"
+            value="${row.sqm||''}"
+            oninput="hideToast('${item.sk}');saveSqmRowLive('${item.sk}',${ri},this.value)"
+            onchange="saveSqmRow('${item.sk}',${ri},'sqm',this.value)"/>
+        </div>
+        <button class="ci-add" onclick="addSqmRow('${item.sk}',${ri})" title="Extra verdiep" style="color:#fff;margin-bottom:2px;flex-shrink:0;${rowReady?'':'opacity:0.3;pointer-events:none;'}">+</button>
+        <button class="ci-add" onclick="removeSqmRow('${item.sk}',${ri})" title="Verwijderen" style="color:#fff;margin-bottom:2px;flex-shrink:0">🗑</button>
+      </div>`;}).join('');
+    }
+    if(item.hasRadRows){
+      ensureData(item.sk);
+      if(!itemData[item.sk].radRows||itemData[item.sk].radRows.length===0){
+        itemData[item.sk].radRows=[{floor:'',count:''}];
+      }
+      const rrows=itemData[item.sk].radRows;
+      fieldsHtml+=rrows.map((row,ri)=>{
+        const rowReady=row.floor!=='';
+        return `<div class="fields-row" style="align-items:flex-end;gap:8px">
+        <div style="flex:1">
+          ${ri===0?'<label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px">Verdieping:</label>':''}
+          <select class="note" style="min-height:auto;padding:10px 12px;resize:none;appearance:auto"
+            onchange="saveRadRow('${item.sk}',${ri},'floor',this.value)">
+            <option value="" ${row.floor===''?'selected':''}>— Kies —</option>
+            <option value="kelder" ${row.floor==='kelder'?'selected':''}>Kelder</option>
+            <option value="gelijkvloers" ${row.floor==='gelijkvloers'?'selected':''}>Gelijkvloers</option>
+            <option value="1e verdiep" ${row.floor==='1e verdiep'?'selected':''}>1e verdiep</option>
+            <option value="2e verdiep" ${row.floor==='2e verdiep'?'selected':''}>2e verdiep</option>
+          </select>
+        </div>
+        <div style="flex:1">
+          ${ri===0?'<label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px">Aantal radiatoren:</label>':''}
+          <input type="number" class="note" placeholder="Aantal" min="1" step="1"
+            style="min-height:auto;padding:10px 12px;resize:none"
+            value="${row.count||''}"
+            oninput="hideToast('${item.sk}');saveRadRowLive('${item.sk}',${ri},this.value)"
+            onchange="saveRadRow('${item.sk}',${ri},'count',this.value)"/>
+        </div>
+        <button class="ci-add" onclick="addRadRow('${item.sk}',${ri})" title="Extra verdiep" style="color:#fff;margin-bottom:2px;flex-shrink:0;${rowReady?'':'opacity:0.3;pointer-events:none;'}">+</button>
+        <button class="ci-add" onclick="removeRadRow('${item.sk}',${ri})" title="Verwijderen" style="color:#fff;margin-bottom:2px;flex-shrink:0">🗑</button>
+      </div>`;}).join('');
+    }
+    if(item.hasFuelType){
+      ensureData(item.sk);
+      const fuel=itemData[item.sk].fuelType||'';
+      const fuelVal=itemData[item.sk].fuelAmount||'';
+      fieldsHtml+=`<div class="loc-row"><div>
+        <label>Verwarmingstype:</label>
+        <div class="mount-btns">
+          <button class="mount-btn ${fuel==='gas'?'active':''}" onclick="saveFuelType('${item.sk}','gas',this)">Gas</button>
+          <button class="mount-btn ${fuel==='mazout'?'active':''}" onclick="saveFuelType('${item.sk}','mazout',this)">Mazout</button>
+        </div>
+      </div></div>`;
+      if(fuel==='gas'){
+        fieldsHtml+=`<div class="fields-row"><div style="flex:1">
+          <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px">Aantal m³ gas per jaar:</label>
+          <input type="number" class="note" placeholder="m³/jaar" min="1" step="1"
+            style="min-height:auto;padding:10px 12px;resize:none"
+            value="${fuelVal}"
+            oninput="hideToast('${item.sk}')"
+            onchange="saveFuelAmount('${item.sk}',this.value)"/>
+        </div><div style="flex:1">
+          <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px">Bouwjaar woning:</label>
+          <input type="number" class="note" placeholder="Jaartal" min="1900" max="${new Date().getFullYear()}" step="1"
+            style="min-height:auto;padding:10px 12px;resize:none"
+            value="${itemData[item.sk].buildYear||''}"
+            oninput="hideToast('${item.sk}')"
+            onchange="saveBuildYear('${item.sk}',this.value)"/>
+        </div></div>`;
+      } else if(fuel==='mazout'){
+        fieldsHtml+=`<div class="fields-row"><div style="flex:1">
+          <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px">Liter mazout per jaar:</label>
+          <input type="number" class="note" placeholder="liter/jaar" min="1" step="1"
+            style="min-height:auto;padding:10px 12px;resize:none"
+            value="${fuelVal}"
+            oninput="hideToast('${item.sk}')"
+            onchange="saveFuelAmount('${item.sk}',this.value)"/>
+        </div><div style="flex:1">
+          <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px">Bouwjaar woning:</label>
+          <input type="number" class="note" placeholder="Jaartal" min="1900" max="${new Date().getFullYear()}" step="1"
+            style="min-height:auto;padding:10px 12px;resize:none"
+            value="${itemData[item.sk].buildYear||''}"
+            oninput="hideToast('${item.sk}')"
+            onchange="saveBuildYear('${item.sk}',this.value)"/>
+        </div></div>`;
+      }
+    }
+    if(item.hasLocation){
+      // For loc-bat: inherit location from omvormer if not yet set
+      if(item.key==='loc-bat' && !d.location){
+        const omvSk=getSK(activeTab,{shared:true,key:'omvormer'});
+        const omvData=itemData[omvSk];
+        if(omvData && omvData.location){
+          ensureData(item.sk);
+          itemData[item.sk].location=omvData.location;
+          d.location=omvData.location;
+        }
+      }
+      fieldsHtml+=`<div class="loc-row"><div>
+        <label>Locatie:</label>
+        <div class="loc-btns">
+          <button class="loc-btn ${d.location==='kelder'?'active':''}" onclick="saveLocation('${item.sk}','kelder',this)">Kelder</button>
+          <button class="loc-btn ${d.location==='gelijkvloers'?'active':''}" onclick="saveLocation('${item.sk}','gelijkvloers',this)">Gelijkvloers</button>
+          <button class="loc-btn ${d.location==='verdieping'?'active':''}" onclick="saveLocation('${item.sk}','verdieping',this)">Verdieping</button>
+        </div>
+      </div></div>`;
+    }
+    if(item.hasBoardType){
+      ensureData(item.sk);
+      const bt=itemData[item.sk].boardType||{};
+      fieldsHtml+=`<div class="loc-row"><div>
+        <label>Type bord:</label>
+        <div class="board-btns">
+          <button class="board-btn ${bt.moeilijk?'active':''}" onclick="toggleBoardType('${item.sk}','moeilijk',this)">Moeilijk bord</button>
+          <button class="board-btn ${bt.extra?'active':''}" onclick="toggleBoardType('${item.sk}','extra',this)">Extra bord plaatsen</button>
+        </div>
+      </div></div>`;
+    }
+    if(item.hasMountType){
+      ensureData(item.sk);
+      const mt=itemData[item.sk].mountType||'';
+      fieldsHtml+=`<div class="loc-row"><div>
+        <label>Type montage:</label>
+        <div class="mount-btns">
+          <button class="mount-btn ${mt==='muurmontage'?'active':''}" onclick="saveMountType('${item.sk}','muurmontage',this)">Muurmontage</button>
+          <button class="mount-btn ${mt==='paal'?'active':''}" onclick="saveMountType('${item.sk}','paal',this)">Paal</button>
+        </div>
+      </div></div>`;
+    }
+    if(item.hasFixType){
+      ensureData(item.sk);
+      const ft=itemData[item.sk].fixType||'';
+      fieldsHtml+=`<div class="loc-row"><div>
+        <label>Bevestigingstechniek:</label>
+        <div class="mount-btns">
+          <button class="mount-btn ${ft==='vloerblokken'?'active':''}" onclick="saveFixType('${item.sk}','vloerblokken',this)">Vloerblokken</button>
+          <button class="mount-btn ${ft==='muurbeugel'?'active':''}" onclick="saveFixType('${item.sk}','muurbeugel',this)">Muurbeugel</button>
+        </div>
+      </div></div>`;
+    }
+    if(item.hasPowerCalc){
+      const calc=calcPowerEstimate(activeTab);
+      if(calc){
+        fieldsHtml+=`<div style="background:rgba(56,182,255,.08);border:1px solid rgba(56,182,255,.25);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:10px">
+          <div style="font-size:12px;font-weight:700;color:#38b6ff;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">⚡ Vermogensvoorstel</div>
+          <div style="font-size:28px;font-weight:700;color:var(--text);margin-bottom:4px">${calc.kw} kW</div>
+          <div style="font-size:12px;color:var(--text2);line-height:1.6">
+            ${calc.details}
+          </div>
+        </div>`;
+      } else {
+        fieldsHtml+=`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:10px">
+          <div style="font-size:12px;font-weight:700;color:var(--text3);margin-bottom:4px">⚡ Vermogensvoorstel</div>
+          <div style="font-size:12px;color:var(--text3)">Vul woning (gas/mazout + bouwjaar) en vloerverwarming of radiatoren in voor een schatting.</div>
+        </div>`;
+      }
+    }
+    if(item.hasUnitType){
+      ensureData(item.sk);
+      const ut=itemData[item.sk].unitType||'';
+      fieldsHtml+=`<div class="loc-row"><div>
+        <label>Type binnenunit:</label>
+        <div class="mount-btns">
+          <button class="mount-btn ${ut==='wandmodel'?'active':''}" onclick="saveUnitType('${item.sk}','wandmodel',this)">Wandmodel</button>
+          <button class="mount-btn ${ut==='vloermodel'?'active':''}" onclick="saveUnitType('${item.sk}','vloermodel',this)">Vloermodel</button>
+        </div>
+      </div></div>`;
+    }
+    if(item.hasConnType){
+      ensureData(item.sk);
+      const ct=itemData[item.sk].connType||'';
+      fieldsHtml+=`<div class="loc-row"><div>
+        <label>Type aansluiting:</label>
+        <div class="mount-btns">
+          <button class="mount-btn ${ct==='stekker'?'active':''}" onclick="saveConnType('${item.sk}','stekker',this)">Aansluiting via stekker</button>
+          <button class="mount-btn ${ct==='bord'?'active':''}" onclick="saveConnType('${item.sk}','bord',this)">Aansluiting via bord</button>
+        </div>
+      </div></div>`;
+    }
+
+    // Action button: trash or restore
+    // Don't show trash if item is shared, or if item is done (OK)
+    let actionBtn='';
+    if(item.optional && isDeleted){
+      actionBtn=`<button class="ci-restore" onclick="event.stopPropagation();restoreItem('${item.sk}')" title="Herstellen">↩</button>`;
+    } else if(item.optional && !isDeleted && !item.isShared && !done){
+      actionBtn=`<button class="ci-trash" onclick="event.stopPropagation();deleteItem('${item.sk}')" title="Verwijderen">🗑</button>`;
+    }
+    // Show + button on last binnenunit of airmu, with trash if >2 inner units
+    if(isAirmu && item.sk===lastInnerSk && !isDeleted){
+      const innerCount=countInnerUnits(activeTab);
+      if(innerCount>2){
+        actionBtn+=`<button class="ci-add" onclick="event.stopPropagation();removeLastInnerUnit()" title="Binnenunit verwijderen" style="color:#fff">🗑</button>`;
+      }
+      actionBtn+=`<button class="ci-add" onclick="event.stopPropagation();addExtraInnerUnit()" title="Extra binnenunit">+</button>`;
+    }
+    
+    return `
+    <div class="ci ${done&&!isDeleted?'completed':''} ${isDeleted?'deleted':''}" id="ci-${item.sk}">
+      <div class="ci-head" ${!isDeleted?`onclick="toggleItem('${item.sk}')"`:''}>
+        <div class="cnum">${displayNum}</div>
+        <div class="clabel">${item.label}</div>
+        ${item.isShared&&!isDeleted?'<span class="sbadge">Gedeeld</span>':''}
+        <div class="ci-actions">${actionBtn}</div>
+        ${!isDeleted?`<span class="sbadge ${done?'ok':'nok'}">${done?'OK':'NOK'}</span>`:''}
+        ${!isDeleted?'<div class="carrow">▼</div>':''}
+      </div>
+      <div class="ci-body">
+        ${!item.noPhoto?`<div class="thumbrow" id="thumbs-${item.sk}">${thumbs}</div>
+        <div class="photoarea">
+          <input type="file" accept="image/*" capture="environment" multiple onchange="addPhotos('${item.sk}',this)"/>
+          <div class="picon">📷</div>
+          <div class="ptxt">Foto toevoegen</div>
+          <div class="psub" style="font-size:11px;color:var(--text3);margin-top:3px">Na het toevoegen kan je de foto bewerken</div>
+        </div>`:''}
+        ${fieldsHtml}
+        <textarea class="note" placeholder="${item.noPhoto?'Beschrijving…':'Toelichting…'}" oninput="hideToast('${item.sk}')" onchange="saveNote('${item.sk}',this.value)">${d.notes||''}</textarea>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════
+// TOAST (inline validation)
+// ══════════════════════════
+let toastTimer=null;
+function showToast(sk,msg){
+  // Open the item first
+  const ci=document.getElementById('ci-'+sk);
+  if(ci && !ci.classList.contains('open')){
+    document.querySelectorAll('.ci.open').forEach(e=>e.classList.remove('open'));
+    ci.classList.add('open');
+  }
+  const el=document.getElementById('toast-'+sk);
+  if(el){
+    el.textContent=msg;
+    el.classList.add('show');
+    if(toastTimer)clearTimeout(toastTimer);
+    toastTimer=setTimeout(()=>hideToast(sk),3000);
+  }
+}
+function hideToast(sk){
+  const el=document.getElementById('toast-'+sk);
+  if(el)el.classList.remove('show');
+}
+
+// ══════════════════════════
+// VALIDATION
+// ══════════════════════════
+function validateCurrentItem(sk){
+  const items=itemsForTab(activeTab);
+  const item=items.find(i=>i.sk===sk);
+  if(!item) return true;
+  const d=itemData[sk]||{};
+  if(item.hasStrings && (!d.strings||d.strings.trim()==='')){
+    showToast(sk,'Aantal strings is verplicht');return false;
+  }
+  if(item.hasMppTrackers && (!d.mppTrackers||d.mppTrackers.trim()==='')){
+    showToast(sk,'Aantal MPP trackers is verplicht');return false;
+  }
+  if(item.hasStrings && item.hasMppTrackers){
+    const s=parseInt(d.strings)||0, m=parseInt(d.mppTrackers)||0;
+    if(s<1){showToast(sk,'Fout configuratie: minimaal 1 string');return false;}
+    if(m<1){showToast(sk,'Fout configuratie: minimaal 1 MPP tracker');return false;}
+    if(m>4){showToast(sk,'Fout configuratie: maximaal 4 MPP trackers');return false;}
+    if(s<m){showToast(sk,'Foute string/ MPP config');return false;}
+  }
+  if(item.hasLocation && !d.location){
+    showToast(sk,`Locatie ${item.label.toLowerCase()} is verplicht`);return false;
+  }
+  if(item.hasFixType && !d.fixType){
+    showToast(sk,'Bevestigingstechniek verplicht');return false;
+  }
+  if(item.hasUnitType && !d.unitType){
+    showToast(sk,'Type binnenunit verplicht');return false;
+  }
+  return true;
+}
+
+function deleteItem(sk){
+  deletedItems.add(sk);
+  // Close if open
+  const ci=document.getElementById('ci-'+sk);
+  if(ci)ci.classList.remove('open');
+  renderItems();updateProgress();
+}
+
+function restoreItem(sk){
+  deletedItems.delete(sk);
+  renderItems();updateProgress();
+}
+
+function toggleItem(sk){
+  const ci=document.getElementById('ci-'+sk);
+  const was=ci.classList.contains('open');
+  // If closing current item, validate
+  const openEl=document.querySelector('.ci.open');
+  if(openEl && openEl.id!=='ci-'+sk){
+    const openSk=openEl.id.replace('ci-','');
+    if(!validateCurrentItem(openSk)) return;
+  }
+  document.querySelectorAll('.ci.open').forEach(e=>e.classList.remove('open'));
+  if(!was)ci.classList.add('open');
+}
+
+// ══════════════════════════
+// DATA OPERATIONS
+// ══════════════════════════
+function ensureData(sk){
+  if(!itemData[sk]) itemData[sk]={photos:[],notes:'',strings:'',mppTrackers:'',location:'',boardType:{},mountType:'',fixType:'',unitType:'',connType:'',sqm:'',floor:'',sqmRows:[],radRows:[],fuelType:'',fuelAmount:'',buildYear:''};
+  if(!itemData[sk].boardType) itemData[sk].boardType={};
+  if(!itemData[sk].sqmRows) itemData[sk].sqmRows=[];
+  if(!itemData[sk].radRows) itemData[sk].radRows=[];
+  if(!itemData[sk].mountType && itemData[sk].mountType!=='') itemData[sk].mountType='';
+  if(!itemData[sk].fixType && itemData[sk].fixType!=='') itemData[sk].fixType='';
+  if(!itemData[sk].unitType && itemData[sk].unitType!=='') itemData[sk].unitType='';
+  if(!itemData[sk].connType && itemData[sk].connType!=='') itemData[sk].connType='';
+}
+
+function addPhotos(sk,input){
+  ensureData(sk);
+  const files=Array.from(input.files);let pending=files.length;
+  files.forEach(f=>{
+    const r=new FileReader();
+    r.onload=e=>{itemData[sk].photos.push(e.target.result);pending--;if(pending===0){refreshItem(sk);updateProgress();}};
+    r.readAsDataURL(f);
+  });
+}
+function delPhoto(sk,idx){if(itemData[sk]){itemData[sk].photos.splice(idx,1);refreshItem(sk);updateProgress();}}
+function saveNote(sk,v){ensureData(sk);itemData[sk].notes=v;refreshItem(sk);updateProgress();}
+
+function saveStrings(sk,v){
+  ensureData(sk);
+  const val=parseInt(v);
+  if(isNaN(val)||val<1){showToast(sk,'Fout configuratie: minimaal 1 string');return;}
+  const mpp=parseInt(itemData[sk].mppTrackers)||0;
+  if(mpp>0 && val<mpp){showToast(sk,'Foute string/ MPP config');return;}
+  itemData[sk].strings=v;
+  hideToast(sk);
+  refreshItem(sk);updateProgress();
+}
+
+function saveMppTrackers(sk,v){
+  ensureData(sk);
+  const val=parseInt(v);
+  if(isNaN(val)||val<1){showToast(sk,'Fout configuratie: minimaal 1 MPP tracker');return;}
+  if(val>4){showToast(sk,'Fout configuratie: maximaal 4 MPP trackers');return;}
+  const strings=parseInt(itemData[sk].strings)||0;
+  if(strings>0 && val>strings){showToast(sk,'Foute string/ MPP config');return;}
+  itemData[sk].mppTrackers=v;
+  hideToast(sk);
+  refreshItem(sk);updateProgress();
+}
+
+function saveSqm(sk,v){
+  ensureData(sk);
+  const val=parseFloat(v);
+  if(isNaN(val)||val<=0){
+    showToast(sk,'Aantal m² mag niet 0 zijn');
+    itemData[sk].sqm='';
+    return;
+  }
+  itemData[sk].sqm=v;
+  hideToast(sk);
+  refreshItem(sk);updateProgress();
+}
+
+function saveFloor(sk,v){
+  ensureData(sk);
+  itemData[sk].floor=v;
+}
+
+function saveSqmRow(sk,idx,field,v){
+  ensureData(sk);
+  if(!itemData[sk].sqmRows) itemData[sk].sqmRows=[{floor:'',sqm:''}];
+  if(field==='sqm'){
+    const val=parseFloat(v);
+    if(isNaN(val)||val<=0){
+      showToast(sk,'Aantal m² mag niet 0 zijn');
+      itemData[sk].sqmRows[idx].sqm='';
+      return;
+    }
+    hideToast(sk);
+    itemData[sk].sqmRows[idx].sqm=v;
+    // Don't re-render on sqm input to avoid losing focus/click
+    return;
+  }
+  itemData[sk].sqmRows[idx][field]=v;
+  renderItems();updateProgress();
+  const ci=document.getElementById('ci-'+sk);
+  if(ci) ci.classList.add('open');
+}
+
+function saveSqmRowLive(sk,idx,v){
+  ensureData(sk);
+  if(!itemData[sk].sqmRows) itemData[sk].sqmRows=[{floor:'',sqm:''}];
+  itemData[sk].sqmRows[idx].sqm=v;
+}
+
+function addSqmRow(sk,ri){
+  ensureData(sk);
+  if(!itemData[sk].sqmRows) itemData[sk].sqmRows=[{floor:'',sqm:''}];
+  const row=itemData[sk].sqmRows[ri];
+  if(!row||row.floor===''||row.sqm===''||parseFloat(row.sqm)<=0){
+    showToast(sk,'Vul verdieping en m² in voor een extra rij toe te voegen');
+    return;
+  }
+  itemData[sk].sqmRows.push({floor:'',sqm:''});
+  renderItems();updateProgress();
+  const ci=document.getElementById('ci-'+sk);
+  if(ci) ci.classList.add('open');
+}
+
+function removeSqmRow(sk,idx){
+  ensureData(sk);
+  if(!itemData[sk].sqmRows||itemData[sk].sqmRows.length<=1) return;
+  itemData[sk].sqmRows.splice(idx,1);
+  renderItems();updateProgress();
+  const ci=document.getElementById('ci-'+sk);
+  if(ci) ci.classList.add('open');
+}
+
+function saveRadRow(sk,idx,field,v){
+  ensureData(sk);
+  if(!itemData[sk].radRows) itemData[sk].radRows=[{floor:'',count:''}];
+  if(field==='count'){
+    const val=parseInt(v);
+    if(isNaN(val)||val<=0){
+      showToast(sk,'Aantal radiatoren mag niet 0 zijn');
+      itemData[sk].radRows[idx].count='';
+      return;
+    }
+    hideToast(sk);
+    itemData[sk].radRows[idx].count=v;
+    return;
+  }
+  itemData[sk].radRows[idx][field]=v;
+  renderItems();updateProgress();
+  const ci=document.getElementById('ci-'+sk);
+  if(ci) ci.classList.add('open');
+}
+
+function saveRadRowLive(sk,idx,v){
+  ensureData(sk);
+  if(!itemData[sk].radRows) itemData[sk].radRows=[{floor:'',count:''}];
+  itemData[sk].radRows[idx].count=v;
+}
+
+function addRadRow(sk,ri){
+  ensureData(sk);
+  if(!itemData[sk].radRows) itemData[sk].radRows=[{floor:'',count:''}];
+  const row=itemData[sk].radRows[ri];
+  if(!row||row.floor===''||row.count===''||parseInt(row.count)<=0){
+    showToast(sk,'Vul verdieping en aantal in voor een extra rij toe te voegen');
+    return;
+  }
+  itemData[sk].radRows.push({floor:'',count:''});
+  renderItems();updateProgress();
+  const ci=document.getElementById('ci-'+sk);
+  if(ci) ci.classList.add('open');
+}
+
+function removeRadRow(sk,idx){
+  ensureData(sk);
+  if(!itemData[sk].radRows||itemData[sk].radRows.length<=1) return;
+  itemData[sk].radRows.splice(idx,1);
+  renderItems();updateProgress();
+  const ci=document.getElementById('ci-'+sk);
+  if(ci) ci.classList.add('open');
+}
+
+function saveFuelType(sk,type,btn){
+  ensureData(sk);
+  if(itemData[sk].fuelType===type){
+    itemData[sk].fuelType='';
+  } else {
+    itemData[sk].fuelType=type;
+    itemData[sk].fuelAmount='';
+  }
+  hideToast(sk);
+  renderItems();updateProgress();
+  const ci=document.getElementById('ci-'+sk);
+  if(ci) ci.classList.add('open');
+}
+
+function saveFuelAmount(sk,v){
+  ensureData(sk);
+  const val=parseFloat(v);
+  if(isNaN(val)||val<=0){
+    const label=itemData[sk].fuelType==='gas'?'m³ gas':'liter mazout';
+    showToast(sk,`Aantal ${label} mag niet 0 zijn`);
+    itemData[sk].fuelAmount='';
+    return;
+  }
+  itemData[sk].fuelAmount=v;
+  hideToast(sk);
+}
+
+function saveBuildYear(sk,v){
+  ensureData(sk);
+  const val=parseInt(v);
+  const currentYear=new Date().getFullYear();
+  if(isNaN(val)||val<1900||val>currentYear){
+    showToast(sk,`Bouwjaar moet tussen 1900 en ${currentYear} liggen`);
+    itemData[sk].buildYear='';
+    return;
+  }
+  itemData[sk].buildYear=v;
+  hideToast(sk);
+}
+
+function saveLocation(sk,loc,btn){
+  ensureData(sk);
+  // Toggle: if same location clicked, deselect
+  if(itemData[sk].location===loc){
+    itemData[sk].location='';
+  } else {
+    itemData[sk].location=loc;
+  }
+  hideToast(sk);
+
+  // Cross-check between omvormer and loc-bat locations
+  if(itemData[sk].location){
+    const omvSk='omvormer'; // shared key
+    const batSk='battery_loc-bat';
+    const locNames={kelder:'kelder',gelijkvloers:'gelijkvloers',verdieping:'verdieping'};
+
+    if(sk===omvSk){
+      // Omvormer changed — check if loc-bat has a different location
+      const batData=itemData[batSk];
+      if(batData && batData.location && batData.location!==itemData[sk].location){
+        showToast(sk,`Thuisbatterij staat in ${locNames[batData.location]}`);
+      }
+    } else if(sk===batSk){
+      // Loc-bat changed — check if omvormer has a different location
+      const omvData=itemData[omvSk];
+      if(omvData && omvData.location && omvData.location!==itemData[sk].location){
+        showToast(sk,`Omvormer staat in ${locNames[omvData.location]}`);
+      }
+    }
+  }
+
+  // Update button states
+  const parent=btn.parentElement;
+  parent.querySelectorAll('.loc-btn').forEach(b=>b.classList.remove('active'));
+  if(itemData[sk].location){
+    parent.querySelectorAll('.loc-btn').forEach(b=>{
+      if(b.textContent.toLowerCase()===itemData[sk].location) b.classList.add('active');
+    });
+  }
+}
+
+function toggleBoardType(sk,type,btn){
+  ensureData(sk);
+  if(!itemData[sk].boardType) itemData[sk].boardType={};
+  // Toggle: both can be selected independently
+  itemData[sk].boardType[type]=!itemData[sk].boardType[type];
+  btn.classList.toggle('active',itemData[sk].boardType[type]);
+}
+
+function saveMountType(sk,type,btn){
+  ensureData(sk);
+  // Toggle: if same type clicked, deselect
+  if(itemData[sk].mountType===type){
+    itemData[sk].mountType='';
+  } else {
+    itemData[sk].mountType=type;
+  }
+  const parent=btn.parentElement;
+  parent.querySelectorAll('.mount-btn').forEach(b=>b.classList.remove('active'));
+  if(itemData[sk].mountType){
+    parent.querySelectorAll('.mount-btn').forEach(b=>{
+      if(b.textContent.toLowerCase()===itemData[sk].mountType) b.classList.add('active');
+    });
+  }
+}
+
+function saveFixType(sk,type,btn){
+  ensureData(sk);
+  if(itemData[sk].fixType===type){
+    itemData[sk].fixType='';
+  } else {
+    itemData[sk].fixType=type;
+  }
+  hideToast(sk);
+  const parent=btn.parentElement;
+  parent.querySelectorAll('.mount-btn').forEach(b=>b.classList.remove('active'));
+  if(itemData[sk].fixType){
+    parent.querySelectorAll('.mount-btn').forEach(b=>{
+      if(b.textContent.toLowerCase()===itemData[sk].fixType) b.classList.add('active');
+    });
+  }
+}
+
+function saveUnitType(sk,type,btn){
+  ensureData(sk);
+  if(itemData[sk].unitType===type){
+    itemData[sk].unitType='';
+  } else {
+    itemData[sk].unitType=type;
+  }
+  hideToast(sk);
+  const parent=btn.parentElement;
+  parent.querySelectorAll('.mount-btn').forEach(b=>b.classList.remove('active'));
+  if(itemData[sk].unitType){
+    parent.querySelectorAll('.mount-btn').forEach(b=>{
+      if(b.textContent.toLowerCase()===itemData[sk].unitType) b.classList.add('active');
+    });
+  }
+}
+
+function saveConnType(sk,type,btn){
+  ensureData(sk);
+  if(itemData[sk].connType===type){
+    itemData[sk].connType='';
+  } else {
+    itemData[sk].connType=type;
+  }
+  hideToast(sk);
+  const parent=btn.parentElement;
+  parent.querySelectorAll('.mount-btn').forEach(b=>b.classList.remove('active'));
+  if(itemData[sk].connType){
+    btn.classList.add('active');
+  }
+}
+
+function refreshItem(sk){
+  // Re-render all items to update OK/NOK badges and trash visibility
+  renderItems();
+  // Re-open the item that was being edited
+  const ci=document.getElementById('ci-'+sk);
+  if(ci && !ci.classList.contains('deleted')) ci.classList.add('open');
+}
+
+function updateProgress(){
+  const items=itemsForTab(activeTab).filter(i=>!deletedItems.has(i.sk));
+  const done=items.filter(i=>{const d=itemData[i.sk];return d&&(d.photos.length>0||d.notes.trim()!=='');}).length;
+  const pct=items.length?Math.round(done/items.length*100):0;
+  document.getElementById('prog-txt').textContent=`${done} van ${items.length} ingevuld`;
+  document.getElementById('prog-pct').textContent=pct+'%';
+  document.getElementById('prog-fill').style.width=pct+'%';
+  // Show photo/text scores
+  const scores=calculateScores(activeTab);
+  const pEl=document.getElementById('prog-scores');
+  if(pEl){
+    pEl.innerHTML=`
+      <span>📷 <span style="color:${scores.photo>=100?'var(--success)':scores.photo<=50?'#ff5c5c':'var(--text2)'}">${scores.photo}%</span></span>
+      <span>📝 <span style="color:${scores.text>=100?'var(--success)':scores.text<=50?'#ff5c5c':'var(--text2)'}">${scores.text}%</span></span>`;
+  }
+}
+
+// ══════════════════════════
+// NAV helpers
+// ══════════════════════════
+function goStep(n){
+  if(n===1){goBackToHub();return;}
+  if(n===2){showPanel('panel-2');renderChecklist();return;}
+  if(n===3){showPanel('panel-3');renderOverview();return;}
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ══════════════════════════
+// EDITOR
+// ══════════════════════════
+const edCanvas=document.getElementById('ed-canvas');
+const edCtx=edCanvas.getContext('2d');
+let baseImg=null, annotations=[], penPath=[];
+let drawing=false, startX=0, startY=0;
+let curTool='pen', curColor='#ff3b30', curSize=5, curStamp=null;
+let edSK='', edIdx=-1;
+const stampCache={};
+let selectedIdx=-1, transformMode=null, transformHandle=null, origAnnotation=null;
+
+function openEditor(sk,idx){
+  edSK=sk; edIdx=idx;
+  annotations=[]; selectedIdx=-1; transformMode=null;
+  const img=new Image();
+  img.onload=()=>{
+    const maxW=window.innerWidth-16;
+    const maxH=window.innerHeight-180;
+    let w=img.width,h=img.height;
+    if(w>maxW){h=Math.round(h*maxW/w);w=maxW;}
+    if(h>maxH){w=Math.round(w*maxH/h);h=maxH;}
+    edCanvas.width=w; edCanvas.height=h;
+    baseImg=img; redraw();
+    document.getElementById('editor-overlay').classList.add('open');
+  };
+  img.src=itemData[sk].photos[idx];
+}
+
+function redraw(){
+  edCtx.drawImage(baseImg,0,0,edCanvas.width,edCanvas.height);
+  annotations.forEach((a,i)=>{
+    paintAnnotation(a);
+    if(i===selectedIdx && curTool==='select') drawSelectionBox(a);
+  });
+}
+
+function drawSelectionBox(a){
+  const b=getBounds(a); if(!b) return;
+  edCtx.save();
+  edCtx.strokeStyle='#4f8ef7'; edCtx.lineWidth=2; edCtx.setLineDash([5,5]);
+  edCtx.strokeRect(b.x,b.y,b.w,b.h);
+  const hs=10;
+  [[b.x,b.y],[b.x+b.w,b.y],[b.x,b.y+b.h],[b.x+b.w,b.y+b.h]].forEach(([hx,hy])=>{
+    edCtx.fillStyle='#4f8ef7';
+    edCtx.fillRect(hx-hs/2,hy-hs/2,hs,hs);
+  });
+  const cx=b.x+b.w/2, cy=b.y-25;
+  edCtx.beginPath();edCtx.arc(cx,cy,8,0,Math.PI*2);edCtx.fillStyle='#38d9a9';edCtx.fill();
+  edCtx.strokeStyle='#fff';edCtx.lineWidth=2;edCtx.setLineDash([]);edCtx.stroke();
+  edCtx.beginPath();edCtx.moveTo(b.x+b.w/2,b.y);edCtx.lineTo(cx,cy);
+  edCtx.strokeStyle='#38d9a9';edCtx.lineWidth=2;edCtx.setLineDash([3,3]);edCtx.stroke();
+  edCtx.restore();
+}
+
+function getBounds(a){
+  if(a.type==='stamp'||a.type==='text'){
+    const s=a.scale||1, w=80*s, h=60*s;
+    return {x:a.x-w/2, y:a.y-h/2, w:w, h:h};
+  }
+  if(a.type==='textbox') return {x:a.x, y:a.y, w:a.w, h:a.h};
+  if(['rect','circle'].includes(a.type))
+    return {x:Math.min(a.x1,a.x2),y:Math.min(a.y1,a.y2),w:Math.abs(a.x2-a.x1),h:Math.abs(a.y2-a.y1)};
+  if(a.type==='pen'&&a.path&&a.path.length>0){
+    let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+    a.path.forEach(p=>{if(p.x<minX)minX=p.x;if(p.y<minY)minY=p.y;if(p.x>maxX)maxX=p.x;if(p.y>maxY)maxY=p.y;});
+    const pad=5;
+    return {x:minX-pad, y:minY-pad, w:(maxX-minX)+pad*2, h:(maxY-minY)+pad*2};
+  }
+  return null;
+}
+
+function hitTest(p,a){
+  const b=getBounds(a); if(!b) return false;
+  return p.x>=b.x && p.x<=b.x+b.w && p.y>=b.y && p.y<=b.y+b.h;
+}
+
+function getHandle(p,a){
+  const b=getBounds(a); if(!b) return null;
+  const cx=b.x+b.w/2, cy=b.y-25;
+  if(Math.sqrt(Math.pow(p.x-cx,2)+Math.pow(p.y-cy,2))<12) return 'rotate';
+  const hs=14;
+  const handles=[{n:'tl',x:b.x,y:b.y},{n:'tr',x:b.x+b.w,y:b.y},
+                 {n:'bl',x:b.x,y:b.y+b.h},{n:'br',x:b.x+b.w,y:b.y+b.h}];
+  for(let h of handles) if(Math.abs(p.x-h.x)<hs && Math.abs(p.y-h.y)<hs) return h.n;
+  return null;
+}
+
+function paintAnnotation(a){
+  edCtx.save();
+  edCtx.strokeStyle=a.color;edCtx.fillStyle=a.color;
+  edCtx.lineWidth=a.size;edCtx.lineCap='round';edCtx.lineJoin='round';
+  
+  if(a.rotation && (a.type==='stamp'||a.type==='text'||a.type==='rect'||a.type==='circle')){
+    const b=getBounds(a);
+    const cx=a.type==='stamp'||a.type==='text' ? a.x : b.x+b.w/2;
+    const cy=a.type==='stamp'||a.type==='text' ? a.y : b.y+b.h/2;
+    edCtx.translate(cx,cy);edCtx.rotate(a.rotation);edCtx.translate(-cx,-cy);
+  }
+  
+  if(a.type==='pen'&&a.path){
+    edCtx.beginPath();
+    a.path.forEach((p,i)=>i===0?edCtx.moveTo(p.x,p.y):edCtx.lineTo(p.x,p.y));
+    edCtx.stroke();
+  } else if(a.type==='rect'){
+    edCtx.lineWidth=8;
+    edCtx.strokeRect(a.x1,a.y1,a.x2-a.x1,a.y2-a.y1);
+  } else if(a.type==='circle'){
+    edCtx.lineWidth=8;
+    const rx=Math.abs(a.x2-a.x1)/2,ry=Math.abs(a.y2-a.y1)/2;
+    const cx=(a.x1+a.x2)/2,cy=(a.y1+a.y2)/2;
+    edCtx.beginPath();edCtx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);edCtx.stroke();
+  } else if(a.type==='text'){
+    edCtx.font=`bold ${22}px sans-serif`;
+    edCtx.fillText(a.text,a.x1,a.y1);
+  } else if(a.type==='textbox'){
+    edCtx.font=`${a.fontSize}px sans-serif`;
+    edCtx.textBaseline='top';
+    const words=a.text.split(' ');
+    let line='', lines=[];
+    const maxWidth=a.w-10;
+    words.forEach(word=>{
+      const testLine=line+word+' ';
+      const metrics=edCtx.measureText(testLine);
+      if(metrics.width>maxWidth && line!==''){lines.push(line);line=word+' ';}
+      else line=testLine;
+    });
+    if(line) lines.push(line);
+    const lineHeight=a.fontSize*1.3;
+    lines.forEach((l,i)=>edCtx.fillText(l.trim(),a.x+5,a.y+5+i*lineHeight));
+  } else if(a.type==='stamp'){
+    const s=STAMPS[a.stampId], scale=a.scale||1, w=80*scale, h=56*scale;
+    if(stampCache[a.stampId]){
+      edCtx.drawImage(stampCache[a.stampId],a.x-w/2,a.y-h/2,w,h);
+    } else if(s.emoji){
+      edCtx.font=`${Math.round(36*scale)}px serif`;edCtx.fillText(s.emoji,a.x-18*scale,a.y+12*scale);
+    }
+    edCtx.font=`bold ${Math.round(11*scale)}px sans-serif`;edCtx.fillStyle=a.color;
+    edCtx.fillText(s.label,a.x-30*scale,a.y+36*scale);
+  }
+  edCtx.restore();
+}
+
+function getPos(e){
+  const r=edCanvas.getBoundingClientRect(),src=e.touches?e.touches[0]:e;
+  return {x:(src.clientX-r.left)*(edCanvas.width/r.width),
+          y:(src.clientY-r.top)*(edCanvas.height/r.height)};
+}
+
+edCanvas.addEventListener('pointerdown',e=>{
+  e.preventDefault();const p=getPos(e);drawing=true;startX=p.x;startY=p.y;
+  if(curTool==='select'){
+    if(selectedIdx>=0){
+      transformHandle=getHandle(p,annotations[selectedIdx]);
+      if(transformHandle){transformMode='resize';origAnnotation=JSON.parse(JSON.stringify(annotations[selectedIdx]));return;}
+    }
+    for(let i=annotations.length-1;i>=0;i--){
+      if(hitTest(p,annotations[i])){
+        selectedIdx=i; transformMode='move';
+        origAnnotation=JSON.parse(JSON.stringify(annotations[i]));
+        redraw(); return;
+      }
+    }
+    selectedIdx=-1; redraw(); return;
+  }
+  if(curTool==='pen') penPath=[{x:p.x,y:p.y}];
+  if(curTool==='stamp'&&curStamp){
+    annotations.push({type:'stamp',stampId:curStamp,x:p.x,y:p.y,color:curColor,size:curSize,scale:1,rotation:0});
+    redraw();drawing=false;
+  }
+},{passive:false});
+
+edCanvas.addEventListener('pointermove',e=>{
+  if(!drawing)return;e.preventDefault();const p=getPos(e);
+  if(curTool==='select' && transformMode==='move' && selectedIdx>=0){
+    const a=annotations[selectedIdx], dx=p.x-startX, dy=p.y-startY;
+    if(a.type==='stamp'||a.type==='text'){ a.x=origAnnotation.x+dx; a.y=origAnnotation.y+dy; }
+    else if(['rect','circle'].includes(a.type)){
+      a.x1=origAnnotation.x1+dx; a.y1=origAnnotation.y1+dy;
+      a.x2=origAnnotation.x2+dx; a.y2=origAnnotation.y2+dy;
+    }
+    else if(a.type==='textbox'){ a.x=origAnnotation.x+dx; a.y=origAnnotation.y+dy; }
+    else if(a.type==='pen'&&a.path){
+      a.path=origAnnotation.path.map(pt=>({x:pt.x+dx,y:pt.y+dy}));
+    }
+    redraw(); return;
+  }
+  if(curTool==='select' && transformMode==='resize' && selectedIdx>=0){
+    const a=annotations[selectedIdx];
+    if(transformHandle==='rotate'){
+      const b=getBounds(origAnnotation);
+      const cx=b.x+b.w/2, cy=b.y+b.h/2;
+      const startAngle=Math.atan2(startY-cy,startX-cx);
+      const currAngle=Math.atan2(p.y-cy,p.x-cx);
+      a.rotation=(origAnnotation.rotation||0)+(currAngle-startAngle);
+    } else if(a.type==='stamp'||a.type==='text'){
+      const origB=getBounds(origAnnotation);
+      const origDist=Math.sqrt(Math.pow(origB.w/2,2)+Math.pow(origB.h/2,2));
+      const newDist=Math.sqrt(Math.pow(p.x-a.x,2)+Math.pow(p.y-a.y,2));
+      a.scale=(origAnnotation.scale||1)*(newDist/origDist);
+      a.scale=Math.max(0.3,Math.min(3,a.scale));
+    } else if(['rect','circle'].includes(a.type)){
+      if(transformHandle==='tl'){ a.x1=p.x; a.y1=p.y; }
+      else if(transformHandle==='tr'){ a.x2=p.x; a.y1=p.y; }
+      else if(transformHandle==='bl'){ a.x1=p.x; a.y2=p.y; }
+      else if(transformHandle==='br'){ a.x2=p.x; a.y2=p.y; }
+    } else if(a.type==='textbox'){
+      const ob=origAnnotation;
+      if(transformHandle==='tl'){ a.w=ob.x+ob.w-p.x; a.h=ob.y+ob.h-p.y; a.x=p.x; a.y=p.y; }
+      else if(transformHandle==='tr'){ a.w=p.x-ob.x; a.h=ob.y+ob.h-p.y; a.y=p.y; }
+      else if(transformHandle==='bl'){ a.w=ob.x+ob.w-p.x; a.h=p.y-ob.y; a.x=p.x; }
+      else if(transformHandle==='br'){ a.w=p.x-ob.x; a.h=p.y-ob.y; }
+    }
+    redraw(); return;
+  }
+  if(curTool==='pen'){
+    penPath.push({x:p.x,y:p.y});
+    edCtx.save();edCtx.strokeStyle=curColor;edCtx.lineWidth=curSize;edCtx.lineCap='round';edCtx.lineJoin='round';
+    edCtx.beginPath();penPath.forEach((pt,i)=>i===0?edCtx.moveTo(pt.x,pt.y):edCtx.lineTo(pt.x,pt.y));
+    edCtx.stroke();edCtx.restore();
+  } else if(['rect','circle','text'].includes(curTool)) {
+    redraw();
+    if(curTool==='text') {
+      edCtx.save();edCtx.strokeStyle=curColor;edCtx.lineWidth=2;edCtx.setLineDash([5,5]);
+      edCtx.strokeRect(startX,startY,p.x-startX,p.y-startY);edCtx.restore();
+    } else {
+      paintAnnotation({type:curTool,x1:startX,y1:startY,x2:p.x,y2:p.y,color:curColor,size:curSize});
+    }
+  }
+},{passive:false});
+
+edCanvas.addEventListener('pointerup',e=>{
+  if(!drawing)return;e.preventDefault();const p=getPos(e);
+  if(curTool==='select'){
+    transformMode=null; transformHandle=null; origAnnotation=null;
+    drawing=false; return;
+  }
+  if(curTool==='pen') annotations.push({type:'pen',path:[...penPath],color:curColor,size:curSize});
+  else if(['rect','circle'].includes(curTool))
+    annotations.push({type:curTool,x1:startX,y1:startY,x2:p.x,y2:p.y,color:curColor,size:curSize,rotation:0});
+  else if(curTool==='text') showTextInput(startX,startY,p.x,p.y);
+  drawing=false;redraw();
+},{passive:false});
+
+// ══════════════════════════
+// TEXT INPUT OVERLAY
+// ══════════════════════════
+let textBoxBounds = null;
+
+function showTextInput(x1,y1,x2,y2) {
+  const w=Math.abs(x2-x1), h=Math.abs(y2-y1);
+  if(w<20 || h<20) return;
+  textBoxBounds = {x:Math.min(x1,x2), y:Math.min(y1,y2), w:w, h:h};
+  const overlay=document.getElementById('text-overlay');
+  const canvasRect=edCanvas.getBoundingClientRect();
+  overlay.style.display='block';
+  overlay.style.left=(canvasRect.left + textBoxBounds.x)+'px';
+  overlay.style.top=(canvasRect.top + textBoxBounds.y + textBoxBounds.h + 10)+'px';
+  document.getElementById('text-input').value='';
+  document.getElementById('text-input').focus();
+}
+
+function confirmTextInput() {
+  const text=document.getElementById('text-input').value.trim();
+  const fontSize=parseInt(document.getElementById('text-size').value);
+  if(text && textBoxBounds) {
+    annotations.push({type:'textbox',text:text,x:textBoxBounds.x,y:textBoxBounds.y,
+      w:textBoxBounds.w,h:textBoxBounds.h,fontSize:fontSize,color:curColor,rotation:0});
+    redraw();
+  }
+  document.getElementById('text-overlay').style.display='none';
+  textBoxBounds=null;
+}
+
+function cancelTextInput() {
+  document.getElementById('text-overlay').style.display='none';
+  textBoxBounds=null;redraw();
+}
+
+// ══════════════════════════
+// TOOLS
+// ══════════════════════════
+function setTool(t){
+  curTool=t; selectedIdx=-1;
+  document.querySelectorAll('.tbtn[id^="tool-"]').forEach(b=>b.classList.remove('active'));
+  const el=document.getElementById('tool-'+t);if(el)el.classList.add('active');
+  if(t!=='stamp')document.getElementById('stamp-tray').classList.remove('open');
+  if(t==='select') edCanvas.style.cursor='default'; else edCanvas.style.cursor='crosshair';
+  redraw();
+}
+function setColor(c,el){
+  curColor=c;
+  document.querySelectorAll('.cswatch').forEach(s=>s.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tool-rect').style.color=c;
+  document.getElementById('tool-circle').style.color=c;
+  document.getElementById('tool-text').style.color=c;
+}
+function setSize(s,el){curSize=s;document.querySelectorAll('.szb').forEach(b=>b.classList.remove('active'));el.classList.add('active');}
+function undoLast(){if(annotations.length){annotations.pop();redraw();}}
+function clearAll(){annotations=[];redraw();}
+function toggleTray(){document.getElementById('stamp-tray').classList.toggle('open');curTool='stamp';}
+function pickStamp(id,el){curStamp=id;document.querySelectorAll('.sitem').forEach(s=>s.classList.remove('active'));el.classList.add('active');}
+function saveEditor(){itemData[edSK].photos[edIdx]=edCanvas.toDataURL('image/jpeg',.92);refreshItem(edSK);closeEditor();}
+function closeEditor(){document.getElementById('editor-overlay').classList.remove('open');document.getElementById('stamp-tray').classList.remove('open');}
+
+// ══════════════════════════
+// DAIKIN ILLUSTRATIONS
+// ══════════════════════════
+function drawBinnen(ctx,w,h){
+  ctx.fillStyle='#1e2336';ctx.beginPath();
+  if(ctx.roundRect)ctx.roundRect(0,0,w,h,4);else ctx.rect(0,0,w,h);ctx.fill();
+  ctx.fillStyle='#4f8ef7';ctx.fillRect(0,0,w,h*0.35);
+  ctx.fillStyle='#e8ecf5';ctx.font=`bold ${Math.round(h*0.22)}px sans-serif`;
+  ctx.fillText('DAIKIN',4,h*0.27);
+  ctx.fillStyle='#38d9a9';ctx.beginPath();ctx.arc(w-8,h*0.17,4,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#2a2f45';
+  for(let i=0;i<4;i++)ctx.fillRect(4+i*(w/4-1),h*0.42,w/4-3,h*0.12);
+}
+function drawBuiten(ctx,w,h){
+  ctx.fillStyle='#1e2336';ctx.beginPath();
+  if(ctx.roundRect)ctx.roundRect(0,0,w,h,4);else ctx.rect(0,0,w,h);ctx.fill();
+  ctx.strokeStyle='#3d4460';ctx.lineWidth=1;ctx.strokeRect(.5,.5,w-1,h-1);
+  ctx.fillStyle='#e8ecf5';ctx.font=`bold ${Math.round(h*0.2)}px sans-serif`;ctx.fillText('DAIKIN',4,h*0.22);
+  ctx.strokeStyle='#4f8ef7';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.arc(w/2,h*0.62,h*0.28,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.arc(w/2,h*0.62,h*0.1,0,Math.PI*2);ctx.stroke();
+  for(let i=0;i<4;i++){
+    const a=i*Math.PI/2;const r1=h*0.1,r2=h*0.28,cx=w/2,cy=h*0.62;
+    ctx.beginPath();ctx.moveTo(cx+Math.cos(a)*r1,cy+Math.sin(a)*r1);ctx.lineTo(cx+Math.cos(a)*r2,cy+Math.sin(a)*r2);ctx.stroke();
+  }
+}
+
+function initStamps(){
+  ['daikin-binnen','daikin-buiten'].forEach(id=>{
+    const prev=document.getElementById('prev-'+id);
+    const fn=id==='daikin-binnen'?drawBinnen:drawBuiten;
+    if(prev){const ctx=prev.getContext('2d');fn(ctx,48,36);}
+    const c=document.createElement('canvas');c.width=80;c.height=56;
+    fn(c.getContext('2d'),80,56);
+    const img=new Image();img.src=c.toDataURL();stampCache[id]=img;
+  });
+  document.getElementById('tool-rect').style.color='#ff3b30';
+  document.getElementById('tool-circle').style.color='#ff3b30';
+  document.getElementById('tool-text').style.color='#ff3b30';
+}
+
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded',initStamps);
+} else {
+  initStamps();
+}
+
+// ══════════════════════════
+// STEP 3: OVERVIEW
+// ══════════════════════════
+function renderOverview(){
+  let html='';
+  const activeTypes=[...completedTypes];
+  activeTypes.forEach(t=>{
+    const def=TYPES[t],items=itemsForTab(t);
+    html+=`<div class="ov-block"><div class="ov-btitle">${def.icon} ${def.label}</div>
+    ${items.map((item,idx)=>{
+      const d=itemData[item.sk]||{photos:[],notes:''};
+      const done=d.photos.length>0||d.notes.trim()!=='';
+      return `<div class="ov-row">
+        <div class="ov-n">${idx+1}</div>
+        <div class="ov-c">
+          <div class="ov-lbl">${item.label}${item.isShared?'<span class="sbadge" style="margin-left:6px">Gedeeld</span>':''}</div>
+          ${d.notes?`<div class="ov-note">💬 ${d.notes}</div>`:''}
+          ${d.photos.length?`<div class="ov-photos">${d.photos.map(p=>`<img class="ov-ph" src="${p}"/>`).join('')}</div>`:''}
+          <div class="ov-st"><div class="stdot" style="background:${done?'var(--success)':'var(--text3)'}"></div>
+            <span style="color:${done?'var(--success)':'var(--text3)'}">${done?'Ingevuld':'Leeg'}</span></div>
+        </div></div>`;
+    }).join('')}</div>`;
+  });
+  document.getElementById('overview').innerHTML=html;
+}
+
+// ══════════════════════════
+// AI CHECK
+// ══════════════════════════
+function showAICheck(){
+  showPanel('panel-ai');
+  document.getElementById('btn-run-ai').style.display='inline-block';
+  document.getElementById('btn-after-ai').style.display='none';
+  document.getElementById('ai-result').innerHTML=`
+    <div style="text-align:center;padding:40px 20px">
+      <div style="color:var(--text2);font-size:14px">Klik op "Controle uitvoeren" om te beginnen</div>
+    </div>`;
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function runAICheck(){
+  document.getElementById('ai-result').innerHTML=`
+    <div style="text-align:center;padding:40px 20px">
+      <div style="color:var(--text2);font-size:14px">Checklist analyseren...</div>
+    </div>`;
+  
+  setTimeout(()=>{
+    const issues=checkCompleteness();
+    document.getElementById('btn-run-ai').style.display='none';
+    document.getElementById('btn-after-ai').style.display='inline-block';
+    
+    if(issues.length===0){
+      document.getElementById('ai-result').innerHTML=`
+        <div style="text-align:center;padding:32px 20px">
+          <div style="font-size:48px;margin-bottom:16px">✅</div>
+          <div style="font-size:18px;font-weight:700;color:var(--success);margin-bottom:8px">
+            Checklist compleet!
+          </div>
+          <div style="font-size:14px;color:var(--text2)">
+            Alle benodigde informatie is aanwezig voor de technieker.
+          </div>
+        </div>`;
+    } else {
+      document.getElementById('ai-result').innerHTML=`
+        <div style="padding:20px">
+          <div style="font-size:18px;font-weight:700;margin-bottom:16px;color:var(--accent3)">
+            ⚠️ Let op: ${issues.length} item${issues.length>1?'s':''} ontbre${issues.length>1?'ken':'ekt'}
+          </div>
+          <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:16px">
+            ${issues.map(i=>`<div style="padding:8px 0;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:start">
+              <div style="color:var(--accent3);font-size:18px;line-height:1">•</div>
+              <div style="flex:1">
+                <div style="font-size:13px;font-weight:600;margin-bottom:2px">${i.label}</div>
+                <div style="font-size:12px;color:var(--text2)">${i.issue}</div>
+              </div>
+            </div>`).join('')}
+          </div>
+          <div style="margin-top:16px;padding:12px;background:rgba(247,201,72,0.1);border-radius:var(--radius-sm);
+            border:1px solid rgba(247,201,72,0.3);font-size:12px;color:var(--text2)">
+            💡 <strong>Tip:</strong> Ga terug en vul de ontbrekende items in voor een complete werkopdracht.
+          </div>
+        </div>`;
+    }
+  },1500);
+}
+
+function checkCompleteness(){
+  const issues=[];
+  [...completedTypes].forEach(type=>{
+    itemsForTab(type).forEach(item=>{
+      const d=itemData[item.sk];
+      if(!d || (d.photos.length===0 && d.notes.trim()==='')) {
+        issues.push({label:`${TYPES[type].label} - ${item.label}`,issue:'Geen foto\'s of toelichting toegevoegd'});
+      }
+      if(item.hasStrings && (!d || !d.strings || d.strings.trim()==='')) {
+        issues.push({label:`${TYPES[type].label} - ${item.label}`,issue:'Aantal strings niet ingevuld'});
+      }
+      if(item.hasMppTrackers && (!d || !d.mppTrackers || d.mppTrackers.trim()==='')) {
+        issues.push({label:`${TYPES[type].label} - ${item.label}`,issue:'Aantal MPP trackers niet ingevuld'});
+      }
+    });
+  });
+  return issues;
+}
+
+// ══════════════════════════
+// FINALIZE & RESET
+// ══════════════════════════
+function finalizeAllReports(){
+  const types=[...completedTypes].map(t=>TYPES[t].label).join(', ');
+  document.getElementById('suc-msg').textContent=`Alle rapporten (${types}) zijn opgeslagen.`;
+  showPanel('panel-4');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function reset(){
+  // Remove extra split hub cards and types
+  for(let i=1;i<=extraSplitCount;i++){
+    const key='airmo-'+i;
+    const card=document.getElementById('hub-'+key);
+    if(card) card.remove();
+    delete TYPES[key];
+  }
+  for(let i=1;i<=extraMultiSplitCount;i++){
+    const key='airmu-'+i;
+    const card=document.getElementById('hub-'+key);
+    if(card) card.remove();
+    delete TYPES[key];
+  }
+  extraSplitCount=0;
+  extraMultiSplitCount=0;
+  // Reset mono/multi labels
+  TYPES['airmo'].label='Lucht/Lucht Mono';
+  const monoName=document.querySelector('#hub-airmo .tname');
+  if(monoName) monoName.textContent='Lucht/Lucht Mono';
+  TYPES['airmu'].label='Lucht/Lucht Multi';
+  // Reset airmu items to default 2 binnenunits
+  TYPES['airmu'].items=[
+    {key:'woning',          label:'Woning',                  shared:true, optional:true},
+    {key:'buitenunit-m',    label:'Buitenunit',              shared:false, hasFixType:true},
+    {key:'binnenunit-m-1',  label:'Binnenunit 1/2',          shared:false, hasUnitType:true},
+    {key:'binnenunit-m-2',  label:'Binnenunit 2/2',          shared:false, hasUnitType:true},
+    {key:'elek-aansl-m',    label:'Elektrische aansluiting', shared:false, hasConnType:true},
+    {key:'beschrijving-m',  label:'Beschrijving project',    shared:false, noPhoto:true},
+  ];
+  const multiName=document.querySelector('#hub-airmu .tname');
+  if(multiName) multiName.textContent='Lucht/Lucht Multi';
+  selected=[];activeTab='';itemData={};completedTypes=new Set();deletedItems=new Set();
+  ['solar','battery','airmo','airmu','airwater','charge'].forEach(t=>{
+    const card=document.getElementById('hub-'+t);
+    if(card) card.classList.remove('completed');
+    const sc=document.getElementById('scores-'+t);
+    if(sc) sc.innerHTML='';
+  });
+  document.getElementById('hub-save-row').style.display='none';
+  showPanel('panel-1');
+}
+
+// Init
+updateHubCards();
+</script>
+</body>
+</html>
