@@ -500,8 +500,8 @@ const TYPES = {
   solar: { label:'Zonnepanelen', icon:'☀️', cls:'solar', items:[
     {key:'woning',    label:'Woning',                     shared:true, optional:true},
     {key:'dak',       label:'Dak',                        shared:false},
-    {key:'omvormer',  label:'Omvormer',                   shared:true, hasStrings:true, hasMppTrackers:true, hasLocation:true},
-    {key:'traject',   label:'Traject UTP voor powermeter',shared:false, optional:true},
+    {key:'omvormer',  label:'Omvormer',                   shared:true, hasStrings:true, hasMppTrackers:true, hasLocation:true, hasMeterType:true},
+    {key:'traject',   label:'Kabelroute DC kabels',        shared:false, optional:true},
     {key:'elek-bord', label:'Elektrisch bord',            shared:true, hasBoardType:true},
     {key:'hoofdzek',  label:'Hoofdzekering',              shared:true},
   ]},
@@ -1108,7 +1108,7 @@ function renderItems(){
       </div>`).join('');
     
     let fieldsHtml='';
-    if(item.hasStrings||item.hasMppTrackers||item.hasLocation||item.hasBoardType||item.hasMountType||item.hasFixType||item.hasUnitType||item.hasConnType||item.hasSqm||item.hasRadRows||item.hasFuelType){
+    if(item.hasStrings||item.hasMppTrackers||item.hasLocation||item.hasMeterType||item.hasBoardType||item.hasMountType||item.hasFixType||item.hasUnitType||item.hasConnType||item.hasSqm||item.hasRadRows||item.hasFuelType){
       fieldsHtml+=`<div class="toast-inline" id="toast-${item.sk}"></div>`;
     }
     if(item.hasStrings||item.hasMppTrackers){
@@ -1261,6 +1261,18 @@ function renderItems(){
           <button class="loc-btn ${d.location==='kelder'?'active':''}" onclick="saveLocation('${item.sk}','kelder',this)">Kelder</button>
           <button class="loc-btn ${d.location==='gelijkvloers'?'active':''}" onclick="saveLocation('${item.sk}','gelijkvloers',this)">Gelijkvloers</button>
           <button class="loc-btn ${d.location==='verdieping'?'active':''}" onclick="saveLocation('${item.sk}','verdieping',this)">Verdieping</button>
+        </div>
+      </div></div>`;
+    }
+    if(item.hasMeterType){
+      ensureData(item.sk);
+      if(!itemData[item.sk].meterType) itemData[item.sk].meterType=[];
+      const mt=itemData[item.sk].meterType;
+      fieldsHtml+=`<div class="loc-row"><div>
+        <label>Energiemeter:</label>
+        <div class="board-btns">
+          <button class="board-btn ${mt.includes('Bidirectionele meter')?'active':''}" onclick="toggleMeterType('${item.sk}','Bidirectionele meter',this)">Bidirectionele meter</button>
+          <button class="board-btn ${mt.includes('3-fasige energiemeter')?'active':''}" onclick="toggleMeterType('${item.sk}','3-fasige energiemeter',this)">3-fasige energiemeter</button>
         </div>
       </div></div>`;
     }
@@ -1466,10 +1478,11 @@ function toggleItem(sk){
 // DATA OPERATIONS
 // ══════════════════════════
 function ensureData(sk){
-  if(!itemData[sk]) itemData[sk]={photos:[],notes:'',strings:'',mppTrackers:'',location:'',boardType:{},mountType:'',fixType:'',unitType:'',connType:'',sqm:'',floor:'',sqmRows:[],radRows:[],fuelType:'',fuelAmount:'',buildYear:''};
+  if(!itemData[sk]) itemData[sk]={photos:[],notes:'',strings:'',mppTrackers:'',location:'',boardType:{},mountType:'',fixType:'',unitType:'',connType:'',sqm:'',floor:'',sqmRows:[],radRows:[],fuelType:'',fuelAmount:'',buildYear:'',meterType:[]};
   if(!itemData[sk].boardType) itemData[sk].boardType={};
   if(!itemData[sk].sqmRows) itemData[sk].sqmRows=[];
   if(!itemData[sk].radRows) itemData[sk].radRows=[];
+  if(!itemData[sk].meterType) itemData[sk].meterType=[];
   if(!itemData[sk].mountType && itemData[sk].mountType!=='') itemData[sk].mountType='';
   if(!itemData[sk].fixType && itemData[sk].fixType!=='') itemData[sk].fixType='';
   if(!itemData[sk].unitType && itemData[sk].unitType!=='') itemData[sk].unitType='';
@@ -1715,6 +1728,15 @@ function toggleBoardType(sk,type,btn){
   // Toggle: both can be selected independently
   itemData[sk].boardType[type]=!itemData[sk].boardType[type];
   btn.classList.toggle('active',itemData[sk].boardType[type]);
+}
+
+function toggleMeterType(sk,type,btn){
+  ensureData(sk);
+  if(!itemData[sk].meterType) itemData[sk].meterType=[];
+  const idx=itemData[sk].meterType.indexOf(type);
+  if(idx===-1) itemData[sk].meterType.push(type);
+  else itemData[sk].meterType.splice(idx,1);
+  btn.classList.toggle('active',itemData[sk].meterType.includes(type));
 }
 
 function saveMountType(sk,type,btn){
@@ -2285,47 +2307,43 @@ function generatePDF(){
   const pw=210,ph=297,ml=15,mr=15,mt=20,mb=20;
   const cw=pw-ml-mr;
   let y=mt;
-  const brand={primary:[56,182,255],dark:[15,17,23],accent:[79,142,247],success:[56,217,169],text:[230,230,230]};
 
   function addPage(){doc.addPage();y=mt;}
   function checkSpace(need){if(y+need>ph-mb) addPage();}
 
   // ── HEADER ──
   function drawHeader(){
-    doc.setFillColor(15,17,23);
-    doc.rect(0,0,pw,42,'F');
-    doc.setFillColor(...brand.primary);
-    doc.rect(0,42,pw,1.5,'F');
-    doc.setTextColor(255,255,255);
-    doc.setFontSize(22);doc.setFont('helvetica','bold');
-    doc.text('Bezoekrapport',ml,22);
+    doc.setDrawColor(0,0,0);doc.setLineWidth(0.5);
+    doc.line(ml,38,pw-mr,38);
+    doc.setTextColor(0,0,0);
+    doc.setFontSize(20);doc.setFont('helvetica','bold');
+    doc.text('Bezoekrapport',ml,18);
     doc.setFontSize(9);doc.setFont('helvetica','normal');
-    doc.setTextColor(180,180,180);
+    doc.setTextColor(100,100,100);
     const now=new Date();
     const dateStr=now.toLocaleDateString('nl-BE',{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
-    doc.text(dateStr,ml,32);
-    // Right side: klant info
+    doc.text(dateStr,ml,28);
     const klant=document.getElementById('klant-naam');
     const adres=document.getElementById('klant-adres');
     if(klant&&klant.value){
-      doc.setTextColor(255,255,255);doc.setFontSize(11);doc.setFont('helvetica','bold');
-      doc.text(klant.value,pw-mr,22,{align:'right'});
+      doc.setTextColor(0,0,0);doc.setFontSize(11);doc.setFont('helvetica','bold');
+      doc.text(klant.value,pw-mr,18,{align:'right'});
     }
     if(adres&&adres.value){
-      doc.setTextColor(180,180,180);doc.setFontSize(9);doc.setFont('helvetica','normal');
-      doc.text(adres.value,pw-mr,32,{align:'right'});
+      doc.setTextColor(100,100,100);doc.setFontSize(9);doc.setFont('helvetica','normal');
+      doc.text(adres.value,pw-mr,28,{align:'right'});
     }
-    y=52;
+    y=44;
   }
 
   // ── SECTION HEADER ──
-  function drawSection(icon,label){
-    checkSpace(18);
-    doc.setFillColor(25,28,36);
-    doc.roundedRect(ml,y,cw,12,2,2,'F');
-    doc.setTextColor(...brand.primary);doc.setFontSize(12);doc.setFont('helvetica','bold');
-    doc.text(`${icon}  ${label}`,ml+6,y+8.5);
-    y+=16;
+  function drawSection(label){
+    checkSpace(16);
+    doc.setFillColor(230,230,230);
+    doc.roundedRect(ml,y,cw,10,1.5,1.5,'F');
+    doc.setTextColor(0,0,0);doc.setFontSize(11);doc.setFont('helvetica','bold');
+    doc.text(label,ml+5,y+7);
+    y+=14;
   }
 
   // ── ITEM ROW ──
@@ -2334,23 +2352,20 @@ function generatePDF(){
     const hasNotes=data.notes&&data.notes.trim()!=='';
     const fields=[];
 
-    // Gather field info
     if(item.hasFuelType&&data.fuelType){
-      const fuelLabel=data.fuelType==='gas'?`Gas: ${data.fuelAmount||'?'} m³/jaar`:`Mazout: ${data.fuelAmount||'?'} L/jaar`;
+      const fuelLabel=data.fuelType==='gas'?`Gas: ${data.fuelAmount||'?'} m3/jaar`:`Mazout: ${data.fuelAmount||'?'} L/jaar`;
       fields.push(fuelLabel);
       if(data.buildYear) fields.push(`Bouwjaar: ${data.buildYear}`);
     }
     if(item.hasSqm&&data.sqmRows&&data.sqmRows.length>0){
-      data.sqmRows.forEach(r=>{if(r.floor&&r.sqm) fields.push(`${r.floor}: ${r.sqm} m²`);});
+      data.sqmRows.forEach(r=>{if(r.floor&&r.sqm) fields.push(`${r.floor}: ${r.sqm} m2`);});
     }
     if(item.hasRadRows&&data.radRows&&data.radRows.length>0){
       data.radRows.forEach(r=>{if(r.floor&&r.count) fields.push(`${r.floor}: ${r.count} radiator${parseInt(r.count)>1?'en':''}`);});
     }
     if(item.hasFixType&&data.fixType) fields.push(`Bevestiging: ${data.fixType}`);
     if(item.hasUnitType&&data.unitType) fields.push(`Type: ${data.unitType}`);
-    if(item.hasConnType&&data.connType){
-      fields.push(`Aansluiting: via ${data.connType}`);
-    }
+    if(item.hasConnType&&data.connType) fields.push(`Aansluiting: via ${data.connType}`);
     if(item.hasLocation&&data.location) fields.push(`Locatie: ${data.location}`);
     if(item.hasBoardType&&data.boardType){
       if(data.boardType.moeilijk) fields.push('Moeilijk bord');
@@ -2359,59 +2374,56 @@ function generatePDF(){
     if(item.hasStrings&&data.strings) fields.push(`Strings: ${data.strings}`);
     if(item.hasMppTrackers&&data.mppTrackers) fields.push(`MPP trackers: ${data.mppTrackers}`);
     if(item.hasMountType&&data.mountType) fields.push(`Montage: ${data.mountType}`);
+    if(item.hasMeterType&&data.meterType){
+      data.meterType.forEach(m=>fields.push(m));
+    }
 
-    // Calculate height needed
-    let blockH=10;
+    let blockH=8;
     if(fields.length>0) blockH+=fields.length*5+2;
     if(hasNotes) blockH+=Math.ceil(doc.splitTextToSize(data.notes,cw-12).length*4.5)+4;
-    if(hasPhotos) blockH+=35;
-
+    if(hasPhotos) blockH+=42;
     checkSpace(blockH+4);
 
-    // Label
-    doc.setFillColor(32,35,44);
-    doc.roundedRect(ml,y,cw,8,1.5,1.5,'F');
+    // Label bar
     const done=hasPhotos||hasNotes||fields.length>0;
-    doc.setFontSize(9);doc.setFont('helvetica','bold');
-    doc.setTextColor(done?56:120,done?217:120,done?169:120);
-    doc.text(done?'✓':'○',ml+4,y+5.5);
-    doc.setTextColor(220,220,220);
-    doc.text(label,ml+12,y+5.5);
-    if(item.isShared){
-      doc.setTextColor(150,150,150);doc.setFontSize(7);
-      doc.text('GEDEELD',pw-mr-4,y+5.5,{align:'right'});
-    }
-    y+=10;
+    doc.setFillColor(done?240:250,done?240:250,done?240:250);
+    doc.roundedRect(ml,y,cw,7,1,1,'F');
+    doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(0,0,0);
+    doc.text(label,ml+4,y+5);
+    doc.setFontSize(8);doc.setFont('helvetica','normal');
+    doc.setTextColor(done?0:150,done?150:150,done?0:150);
+    doc.text(done?'OK':'NOK',pw-mr-4,y+5,{align:'right'});
+    y+=9;
 
     // Fields
     if(fields.length>0){
       fields.forEach(f=>{
         checkSpace(6);
-        doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(170,190,210);
-        doc.text(`• ${f}`,ml+8,y+3);
+        doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(60,60,60);
+        doc.text(`- ${f}`,ml+6,y+3);
         y+=5;
       });
-      y+=2;
+      y+=1;
     }
 
     // Notes
     if(hasNotes){
       checkSpace(10);
-      doc.setFillColor(28,30,38);
+      doc.setFillColor(245,245,245);
       const lines=doc.splitTextToSize(data.notes,cw-16);
       const noteH=lines.length*4.5+6;
-      doc.roundedRect(ml+4,y,cw-8,noteH,1.5,1.5,'F');
-      doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(190,190,190);
+      doc.roundedRect(ml+4,y,cw-8,noteH,1,1,'F');
+      doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(40,40,40);
       doc.text(lines,ml+8,y+5);
-      y+=noteH+3;
+      y+=noteH+2;
     }
 
-    // Photos
+    // Photos - rotated 90 degrees clockwise
     if(hasPhotos){
       const maxPerRow=3;
       const gap=3;
       const imgW=(cw-8-(maxPerRow-1)*gap)/maxPerRow;
-      const imgH=30;
+      const imgH=38;
       let px=ml+4;
       data.photos.forEach((photo,pi)=>{
         if(pi>0&&pi%maxPerRow===0){
@@ -2419,9 +2431,22 @@ function generatePDF(){
           checkSpace(imgH+gap);
         }
         try{
-          doc.addImage(photo,'JPEG',px,y,imgW,imgH);
-          doc.setDrawColor(50,50,50);doc.rect(px,y,imgW,imgH);
-        }catch(e){}
+          // Rotate image 90 degrees CW by using a canvas
+          const img=new Image();
+          img.src=photo;
+          const c=document.createElement('canvas');
+          c.width=img.naturalHeight||img.height||300;
+          c.height=img.naturalWidth||img.width||400;
+          const ctx=c.getContext('2d');
+          ctx.translate(c.width,0);
+          ctx.rotate(Math.PI/2);
+          ctx.drawImage(img,0,0);
+          const rotated=c.toDataURL('image/jpeg',0.8);
+          doc.addImage(rotated,'JPEG',px,y,imgW,imgH);
+        }catch(e){
+          try{doc.addImage(photo,'JPEG',px,y,imgW,imgH);}catch(e2){}
+        }
+        doc.setDrawColor(200,200,200);doc.rect(px,y,imgW,imgH);
         px+=imgW+gap;
       });
       y+=imgH+4;
@@ -2433,57 +2458,49 @@ function generatePDF(){
   function drawPowerEstimate(typeKey){
     const calc=calcPowerEstimate(typeKey);
     if(!calc) return;
-    checkSpace(35);
-    doc.setFillColor(20,40,60);
-    doc.roundedRect(ml,y,cw,30,2,2,'F');
-    doc.setDrawColor(...brand.primary);doc.setLineWidth(0.5);
-    doc.roundedRect(ml,y,cw,30,2,2,'S');
-    doc.setTextColor(...brand.primary);doc.setFontSize(8);doc.setFont('helvetica','bold');
-    doc.text('⚡ VERMOGENSVOORSTEL',ml+6,y+7);
-    doc.setTextColor(255,255,255);doc.setFontSize(20);doc.setFont('helvetica','bold');
-    doc.text(`${calc.kw} kW`,ml+6,y+20);
-    // Details right side
+    checkSpace(32);
+    doc.setFillColor(240,248,255);
+    doc.roundedRect(ml,y,cw,28,2,2,'F');
+    doc.setDrawColor(100,100,100);doc.setLineWidth(0.3);
+    doc.roundedRect(ml,y,cw,28,2,2,'S');
+    doc.setTextColor(0,0,0);doc.setFontSize(8);doc.setFont('helvetica','bold');
+    doc.text('VERMOGENSVOORSTEL',ml+6,y+7);
+    doc.setFontSize(18);
+    doc.text(`${calc.kw} kW`,ml+6,y+19);
     const detailLines=calc.details.replace(/<br>/g,'\n').replace(/<[^>]+>/g,'').split('\n').filter(l=>l.trim());
-    doc.setFontSize(7);doc.setFont('helvetica','normal');doc.setTextColor(160,180,200);
-    detailLines.forEach((l,i)=>{doc.text(l.trim(),ml+50,y+8+i*4);});
-    y+=34;
+    doc.setFontSize(7);doc.setFont('helvetica','normal');doc.setTextColor(60,60,60);
+    detailLines.forEach((l,i)=>{doc.text(l.trim(),ml+45,y+7+i*3.5);});
+    y+=32;
   }
 
   // ── BUILD PDF ──
   drawHeader();
-
   const activeTypes=[...completedTypes];
   activeTypes.forEach(t=>{
     const def=TYPES[t];
     const items=itemsForTab(t);
-    drawSection(def.icon,def.label);
-
+    drawSection(def.label);
     items.forEach(item=>{
       if(deletedItems.has(item.sk)) return;
       const d=itemData[item.sk]||{photos:[],notes:''};
       drawItem(item.label,d,item);
-
-      // Power estimate after buitenunit in airwater
-      if(item.hasPowerCalc){
-        drawPowerEstimate(t);
-      }
+      if(item.hasPowerCalc) drawPowerEstimate(t);
     });
-    y+=6;
+    y+=4;
   });
 
-  // ── FOOTER on each page ──
+  // ── FOOTER ──
   const pageCount=doc.internal.getNumberOfPages();
   for(let i=1;i<=pageCount;i++){
     doc.setPage(i);
-    doc.setFillColor(...brand.primary);
-    doc.rect(0,ph-3,pw,3,'F');
+    doc.setDrawColor(0,0,0);doc.setLineWidth(0.3);
+    doc.line(ml,ph-10,pw-mr,ph-10);
     doc.setFontSize(7);doc.setFont('helvetica','normal');doc.setTextColor(120,120,120);
     doc.text(`Pagina ${i} / ${pageCount}`,pw/2,ph-6,{align:'center'});
     doc.text('Plenion Bezoekrapport',ml,ph-6);
     doc.text(new Date().toLocaleDateString('nl-BE'),pw-mr,ph-6,{align:'right'});
   }
 
-  // Save
   const klantNaam=document.getElementById('klant-naam');
   const filename=klantNaam&&klantNaam.value?`Bezoekrapport_${klantNaam.value.replace(/[^a-zA-Z0-9]/g,'_')}.pdf`:'Bezoekrapport.pdf';
   doc.save(filename);
