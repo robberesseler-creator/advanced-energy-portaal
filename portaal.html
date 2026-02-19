@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0a0f1a">
-<title>Advanced Energy - Advanced Intranet</title>
+<title>Advanced Intranet</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
@@ -337,7 +337,7 @@
   <div class="section-label">Formulieren</div>
   <div class="tiles">
 
-    <a class="tile" href="#werkbon" onclick="openTool('werkbon')">
+    <a class="tile" href="werkbon.html" onclick="openTool('werkbon')">
       <div class="tile-icon">
         <svg viewBox="0 0 24 24">
           <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
@@ -407,13 +407,18 @@
   </div>
 
   <footer class="footer">
-    <div class="footer-text">Advanced Energy &bull; advanced Intranet v1.0</div>
+    <div class="footer-text">Advanced Energy &bull; Intranet v1.0</div>
   </footer>
 
 </div>
 
 <script>
   function openTool(tool) {
+    // Werkbon navigeert naar het aparte bestand
+    if (tool === 'werkbon') {
+      window.location.href = 'werkbon.html';
+      return;
+    }
     // Daikin checklist navigeert naar het aparte bestand
     if (tool === 'daikin') {
       window.location.href = 'daikin_checklist.html';
