@@ -10,6 +10,7 @@
 <meta name="theme-color" content="#000000">
 <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiQmV6b2VrcmFwcG9ydCIsInNob3J0X25hbWUiOiJCZXpvZWsiLCJzdGFydF91cmwiOiIuIiwiZGlzcGxheSI6InN0YW5kYWxvbmUiLCJiYWNrZ3JvdW5kX2NvbG9yIjoiIzBmMTExNyIsInRoZW1lX2NvbG9yIjoiIzAwMDAwMCJ9">
 <title>Bezoekrapport</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
   :root {
@@ -372,6 +373,11 @@
   <!-- STEP 1: HUB -->
   <div class="panel active" id="panel-1">
     <div class="ptitle">Verslag plaatsbezoek</div>
+    <div class="psub">Klantgegevens</div>
+    <div style="display:flex;gap:10px;margin-bottom:20px">
+      <input type="text" id="klant-naam" class="note" placeholder="Naam klant" style="min-height:auto;padding:10px 12px;flex:1">
+      <input type="text" id="klant-adres" class="note" placeholder="Adres" style="min-height:auto;padding:10px 12px;flex:1">
+    </div>
     <div class="psub">Klik op een type om de checklist te starten</div>
     <div class="tgrid" id="hub-grid">
       <div class="tcard clickable solar" id="hub-solar" onclick="openChecklist('solar')">
@@ -479,6 +485,7 @@
       <span class="suc-em">✅</span>
       <div class="suc-t">Rapport opgeslagen!</div>
       <div class="suc-s" id="suc-msg"></div>
+      <button class="btn btn-p" onclick="generatePDF()" style="margin-bottom:10px">📄 Download PDF</button>
       <button class="btn btn-s" onclick="backToHub()" style="margin-bottom:10px">← Terug</button>
       <button class="btn btn-s" onclick="reset()">+ Nieuw rapport</button>
     </div>
@@ -2267,6 +2274,219 @@ function checkCompleteness(){
     });
   });
   return issues;
+}
+
+// ══════════════════════════
+// PDF GENERATION
+// ══════════════════════════
+function generatePDF(){
+  const{jsPDF}=window.jspdf;
+  const doc=new jsPDF('p','mm','a4');
+  const pw=210,ph=297,ml=15,mr=15,mt=20,mb=20;
+  const cw=pw-ml-mr;
+  let y=mt;
+  const brand={primary:[56,182,255],dark:[15,17,23],accent:[79,142,247],success:[56,217,169],text:[230,230,230]};
+
+  function addPage(){doc.addPage();y=mt;}
+  function checkSpace(need){if(y+need>ph-mb) addPage();}
+
+  // ── HEADER ──
+  function drawHeader(){
+    doc.setFillColor(15,17,23);
+    doc.rect(0,0,pw,42,'F');
+    doc.setFillColor(...brand.primary);
+    doc.rect(0,42,pw,1.5,'F');
+    doc.setTextColor(255,255,255);
+    doc.setFontSize(22);doc.setFont('helvetica','bold');
+    doc.text('Bezoekrapport',ml,22);
+    doc.setFontSize(9);doc.setFont('helvetica','normal');
+    doc.setTextColor(180,180,180);
+    const now=new Date();
+    const dateStr=now.toLocaleDateString('nl-BE',{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    doc.text(dateStr,ml,32);
+    // Right side: klant info
+    const klant=document.getElementById('klant-naam');
+    const adres=document.getElementById('klant-adres');
+    if(klant&&klant.value){
+      doc.setTextColor(255,255,255);doc.setFontSize(11);doc.setFont('helvetica','bold');
+      doc.text(klant.value,pw-mr,22,{align:'right'});
+    }
+    if(adres&&adres.value){
+      doc.setTextColor(180,180,180);doc.setFontSize(9);doc.setFont('helvetica','normal');
+      doc.text(adres.value,pw-mr,32,{align:'right'});
+    }
+    y=52;
+  }
+
+  // ── SECTION HEADER ──
+  function drawSection(icon,label){
+    checkSpace(18);
+    doc.setFillColor(25,28,36);
+    doc.roundedRect(ml,y,cw,12,2,2,'F');
+    doc.setTextColor(...brand.primary);doc.setFontSize(12);doc.setFont('helvetica','bold');
+    doc.text(`${icon}  ${label}`,ml+6,y+8.5);
+    y+=16;
+  }
+
+  // ── ITEM ROW ──
+  function drawItem(label,data,item){
+    const hasPhotos=data.photos&&data.photos.length>0;
+    const hasNotes=data.notes&&data.notes.trim()!=='';
+    const fields=[];
+
+    // Gather field info
+    if(item.hasFuelType&&data.fuelType){
+      const fuelLabel=data.fuelType==='gas'?`Gas: ${data.fuelAmount||'?'} m³/jaar`:`Mazout: ${data.fuelAmount||'?'} L/jaar`;
+      fields.push(fuelLabel);
+      if(data.buildYear) fields.push(`Bouwjaar: ${data.buildYear}`);
+    }
+    if(item.hasSqm&&data.sqmRows&&data.sqmRows.length>0){
+      data.sqmRows.forEach(r=>{if(r.floor&&r.sqm) fields.push(`${r.floor}: ${r.sqm} m²`);});
+    }
+    if(item.hasRadRows&&data.radRows&&data.radRows.length>0){
+      data.radRows.forEach(r=>{if(r.floor&&r.count) fields.push(`${r.floor}: ${r.count} radiator${parseInt(r.count)>1?'en':''}`);});
+    }
+    if(item.hasFixType&&data.fixType) fields.push(`Bevestiging: ${data.fixType}`);
+    if(item.hasUnitType&&data.unitType) fields.push(`Type: ${data.unitType}`);
+    if(item.hasConnType&&data.connType){
+      fields.push(`Aansluiting: via ${data.connType}`);
+    }
+    if(item.hasLocation&&data.location) fields.push(`Locatie: ${data.location}`);
+    if(item.hasBoardType&&data.boardType){
+      if(data.boardType.moeilijk) fields.push('Moeilijk bord');
+      if(data.boardType.extra) fields.push('Extra bord plaatsen');
+    }
+    if(item.hasStrings&&data.strings) fields.push(`Strings: ${data.strings}`);
+    if(item.hasMppTrackers&&data.mppTrackers) fields.push(`MPP trackers: ${data.mppTrackers}`);
+    if(item.hasMountType&&data.mountType) fields.push(`Montage: ${data.mountType}`);
+
+    // Calculate height needed
+    let blockH=10;
+    if(fields.length>0) blockH+=fields.length*5+2;
+    if(hasNotes) blockH+=Math.ceil(doc.splitTextToSize(data.notes,cw-12).length*4.5)+4;
+    if(hasPhotos) blockH+=35;
+
+    checkSpace(blockH+4);
+
+    // Label
+    doc.setFillColor(32,35,44);
+    doc.roundedRect(ml,y,cw,8,1.5,1.5,'F');
+    const done=hasPhotos||hasNotes||fields.length>0;
+    doc.setFontSize(9);doc.setFont('helvetica','bold');
+    doc.setTextColor(done?56:120,done?217:120,done?169:120);
+    doc.text(done?'✓':'○',ml+4,y+5.5);
+    doc.setTextColor(220,220,220);
+    doc.text(label,ml+12,y+5.5);
+    if(item.isShared){
+      doc.setTextColor(150,150,150);doc.setFontSize(7);
+      doc.text('GEDEELD',pw-mr-4,y+5.5,{align:'right'});
+    }
+    y+=10;
+
+    // Fields
+    if(fields.length>0){
+      fields.forEach(f=>{
+        checkSpace(6);
+        doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(170,190,210);
+        doc.text(`• ${f}`,ml+8,y+3);
+        y+=5;
+      });
+      y+=2;
+    }
+
+    // Notes
+    if(hasNotes){
+      checkSpace(10);
+      doc.setFillColor(28,30,38);
+      const lines=doc.splitTextToSize(data.notes,cw-16);
+      const noteH=lines.length*4.5+6;
+      doc.roundedRect(ml+4,y,cw-8,noteH,1.5,1.5,'F');
+      doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(190,190,190);
+      doc.text(lines,ml+8,y+5);
+      y+=noteH+3;
+    }
+
+    // Photos
+    if(hasPhotos){
+      const maxPerRow=3;
+      const gap=3;
+      const imgW=(cw-8-(maxPerRow-1)*gap)/maxPerRow;
+      const imgH=30;
+      let px=ml+4;
+      data.photos.forEach((photo,pi)=>{
+        if(pi>0&&pi%maxPerRow===0){
+          y+=imgH+gap;px=ml+4;
+          checkSpace(imgH+gap);
+        }
+        try{
+          doc.addImage(photo,'JPEG',px,y,imgW,imgH);
+          doc.setDrawColor(50,50,50);doc.rect(px,y,imgW,imgH);
+        }catch(e){}
+        px+=imgW+gap;
+      });
+      y+=imgH+4;
+    }
+    y+=2;
+  }
+
+  // ── POWER ESTIMATE BOX ──
+  function drawPowerEstimate(typeKey){
+    const calc=calcPowerEstimate(typeKey);
+    if(!calc) return;
+    checkSpace(35);
+    doc.setFillColor(20,40,60);
+    doc.roundedRect(ml,y,cw,30,2,2,'F');
+    doc.setDrawColor(...brand.primary);doc.setLineWidth(0.5);
+    doc.roundedRect(ml,y,cw,30,2,2,'S');
+    doc.setTextColor(...brand.primary);doc.setFontSize(8);doc.setFont('helvetica','bold');
+    doc.text('⚡ VERMOGENSVOORSTEL',ml+6,y+7);
+    doc.setTextColor(255,255,255);doc.setFontSize(20);doc.setFont('helvetica','bold');
+    doc.text(`${calc.kw} kW`,ml+6,y+20);
+    // Details right side
+    const detailLines=calc.details.replace(/<br>/g,'\n').replace(/<[^>]+>/g,'').split('\n').filter(l=>l.trim());
+    doc.setFontSize(7);doc.setFont('helvetica','normal');doc.setTextColor(160,180,200);
+    detailLines.forEach((l,i)=>{doc.text(l.trim(),ml+50,y+8+i*4);});
+    y+=34;
+  }
+
+  // ── BUILD PDF ──
+  drawHeader();
+
+  const activeTypes=[...completedTypes];
+  activeTypes.forEach(t=>{
+    const def=TYPES[t];
+    const items=itemsForTab(t);
+    drawSection(def.icon,def.label);
+
+    items.forEach(item=>{
+      if(deletedItems.has(item.sk)) return;
+      const d=itemData[item.sk]||{photos:[],notes:''};
+      drawItem(item.label,d,item);
+
+      // Power estimate after buitenunit in airwater
+      if(item.hasPowerCalc){
+        drawPowerEstimate(t);
+      }
+    });
+    y+=6;
+  });
+
+  // ── FOOTER on each page ──
+  const pageCount=doc.internal.getNumberOfPages();
+  for(let i=1;i<=pageCount;i++){
+    doc.setPage(i);
+    doc.setFillColor(...brand.primary);
+    doc.rect(0,ph-3,pw,3,'F');
+    doc.setFontSize(7);doc.setFont('helvetica','normal');doc.setTextColor(120,120,120);
+    doc.text(`Pagina ${i} / ${pageCount}`,pw/2,ph-6,{align:'center'});
+    doc.text('Plenion Bezoekrapport',ml,ph-6);
+    doc.text(new Date().toLocaleDateString('nl-BE'),pw-mr,ph-6,{align:'right'});
+  }
+
+  // Save
+  const klantNaam=document.getElementById('klant-naam');
+  const filename=klantNaam&&klantNaam.value?`Bezoekrapport_${klantNaam.value.replace(/[^a-zA-Z0-9]/g,'_')}.pdf`:'Bezoekrapport.pdf';
+  doc.save(filename);
 }
 
 // ══════════════════════════
